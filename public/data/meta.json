@@ -61,9 +61,9 @@
   "commuter": 3
  },
  "largest_island_share": {
-  "kid": 0.0183,
-  "casual": 0.3112,
-  "commuter": 0.6654
+  "kid": 0.0129,
+  "casual": 0.2859,
+  "commuter": 0.6533
  },
  "lts_source_counts": {
   "ridescore_v1": 23718,

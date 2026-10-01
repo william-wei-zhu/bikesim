@@ -123,9 +123,12 @@ export function applyPaint(map: maplibregl.Map, s: PaintState) {
     ...ISLAND_COLORS.flatMap((c, i) => [i, c]), s.dark ? "#3a5a80" : "#a9b9cf"];
   const selected = ["boolean", ["feature-state", "sel"], false];
 
+  const muted = s.dark ? "#2b4a70" : "#c9d5e6";
   const streetColor = s.mode === "explore"
     ? ["case", selected, "#082b54", fixed, LTS_COLOR[1], ltsColor]
-    : ["case", selected, "#082b54", rideable, islandColor, s.dark ? "#2b4a70" : "#c9d5e6"];
+    : s.mode === "ride"
+      ? ["case", rideable, s.dark ? "#2a6a52" : "#b9e4cc", muted] // quiet so the route pops
+      : ["case", selected, "#082b54", rideable, islandColor, muted];
   map.setPaintProperty("rs-streets", "line-color", streetColor as never);
   const dimmed = s.focusRoot !== null && s.mode !== "explore"
     ? ["case", ["==", ["number", ["feature-state", "root"], -1], s.focusRoot], 1, 0.25]

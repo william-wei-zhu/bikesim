@@ -125,7 +125,7 @@ export default function MapApp() {
     const map = mapRef.current; if (!map || !layersAdded.current) return;
     setVisible(map, "rs-crashes", showCrashes);
     setVisible(map, "rs-wards", mode === "islands");
-    setVisible(map, "rs-pois", mode === "islands" || mode === "ride");
+    setVisible(map, "rs-pois", mode === "islands");
   }, [showCrashes, mode, mapReady, net]);
 
   useEffect(() => {

@@ -160,8 +160,17 @@ export function nearestNode(net: Net, x: number, y: number, maxM = 600, ok?: (n:
   return best;
 }
 
+const SMALL = new Set(["of", "the", "and", "at", "on"]);
+/** DDOT names arrive in capitals ("SUITLAND PARKWAY TRAIL SE"); show them in title case, keep quadrants. */
+export function tidyName(n: string) {
+  if (!n || n !== n.toUpperCase()) return n;
+  return n.toLowerCase().split(" ").map((w, i) =>
+    /^(nw|ne|sw|se)$/.test(w) ? w.toUpperCase() : i > 0 && SMALL.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1),
+  ).join(" ");
+}
+
 export function edgeName(net: Net, e: number) {
-  return net.names[net.ename[e]] || "Unnamed street";
+  return tidyName(net.names[net.ename[e]]) || "Unnamed street";
 }
 
 export function edgeMid(net: Net, e: number): [number, number] {

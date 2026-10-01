@@ -1,0 +1,74 @@
+{
+ "snapshot": "basemap_2026-09-29.parquet",
+ "pipeline_run": {
+  "built_at": "2026-10-01T20:50:10+00:00",
+  "code": {
+   "commit": "ef0caead40dd803a17ee845abd6902e3ddaff3c3",
+   "package": "0.1.0",
+   "python": "3.12.12"
+  },
+  "derived": {
+   "crash_window": [
+    "2021-09-30",
+    "2026-09-30"
+   ],
+   "p95_crash_count": 1,
+   "weights": {
+    "crash": 0.3,
+    "facility": 0.1,
+    "lts": 0.6
+   }
+  },
+  "lockfile_sha256": "eff7334f2c8c4e71a4a1a69e98fdf038d1a517170c8c214586bff45adbfe092b",
+  "python_hash_seed": null,
+  "row_counts": {
+   "crashes": 2293,
+   "ridescore_v1_scores": 13829,
+   "road_segment": 13829
+  },
+  "run_date": "2026-09-30",
+  "sources": {
+   "files": {
+    "crashes.json": {
+     "bytes": 4086696,
+     "fetched_at": "2026-10-01T20:50:06+00:00",
+     "sha256": "265697de62665bd3091452726ae1dc0cb34d19f30fef109e33f3441a30a91fda",
+     "url": "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Public_Safety_WebMercator/MapServer/24/query"
+    },
+    "dc_boundary.geojson": {
+     "bytes": 490722,
+     "fetched_at": "2026-10-01T20:50:07+00:00",
+     "sha256": "27ac2817a50f77ba4f9049470c06ad62c0d771fd1b93b1e333d12386bba9d07d",
+     "url": "https://opendata.arcgis.com/datasets/DCGIS::washington-dc-boundary.geojson"
+    },
+    "roadway_block.geojson": {
+     "bytes": 46167449,
+     "fetched_at": "2026-10-01T20:50:02+00:00",
+     "sha256": "102e5bf949a8dd458c4359ee51708a5b40dbc9f183706e5036a628c0fe7ea47e",
+     "url": "https://opendata.arcgis.com/datasets/DCGIS::roadway-block.geojson"
+    }
+   },
+   "snapshot": "2026-09-30"
+  }
+ },
+ "population_source": "2020 Decennial Census blocks (TIGER/Line tabblock20, POP20)",
+ "residents": 689545,
+ "edges": 28121,
+ "nodes": 21008,
+ "riders": {
+  "kid": 1,
+  "casual": 2,
+  "commuter": 3
+ },
+ "largest_island_share": {
+  "kid": 0.0183,
+  "casual": 0.3112,
+  "commuter": 0.6654
+ },
+ "lts_source_counts": {
+  "ridescore_v1": 23718,
+  "track_rule": 2177,
+  "trail_rule": 1150,
+  "osm_class_rule": 1076
+ }
+}

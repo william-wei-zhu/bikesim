@@ -232,7 +232,7 @@ export default function MapApp() {
     rideRef.current = r;
     setRiding(true);
     setRidePlaying(true);
-    map.flyTo({ center: coords[0], zoom: 17.2, pitch: 70, duration: 1500 });
+    map.flyTo({ center: coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
     window.setTimeout(() => { if (rideRef.current === r) r.play(); }, 1550);
   }, [net, routes]);
 

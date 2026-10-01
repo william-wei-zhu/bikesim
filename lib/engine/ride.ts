@@ -45,10 +45,9 @@ export class Ride {
     const ahead = this.pointAt(Math.min(this.total, this.d + 70)).p;
     const target = (Math.atan2((ahead[0] - p[0]) * Math.cos((p[1] * Math.PI) / 180), ahead[1] - p[1]) * 180) / Math.PI;
     if (this.bearing === null) this.bearing = target;
-    let diff = ((target - this.bearing + 540) % 360) - 180;
+    const diff = ((target - this.bearing + 540) % 360) - 180;
     this.bearing += diff * 0.08;
-    diff = 0;
-    this.map.jumpTo({ center: p, bearing: this.bearing, pitch: 70, zoom: 17.2 });
+    this.map.jumpTo({ center: p, bearing: this.bearing, pitch: 74, zoom: 17.8 }); // low enough to ride between buildings
     const src = this.map.getSource("rs-rider") as maplibregl.GeoJSONSource | undefined;
     src?.setData({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: p } }] });
     this.onFrame({ distM: this.d, totalM: this.total, edgeIdx: this.edgeAt[seg] ?? -1 });

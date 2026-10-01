@@ -5,7 +5,8 @@ import { streetLines, wallFootprints, pointsFC, EMPTY_FC, LTS_COLOR, LTS_HEIGHT,
 import type { Islands } from "./graph";
 
 export type Mode = "explore" | "islands" | "build" | "ride";
-export const DC_VIEW = { center: [-77.0214, 38.8985] as [number, number], zoom: 12.1, pitch: 52, bearing: -18 };
+// Opens over downtown and the Mall so the 3D city reads immediately (buildings appear from zoom 13).
+export const DC_VIEW = { center: [-77.0275, 38.8975] as [number, number], zoom: 13.4, pitch: 58, bearing: -22 };
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 let workerSet = false;
@@ -15,6 +16,8 @@ export function createMap(container: HTMLElement, opts: { flat: boolean }) {
   const map = new maplibregl.Map({
     container, style: STYLE_URL, ...DC_VIEW, pitch: opts.flat ? 0 : DC_VIEW.pitch, maxPitch: 75,
     attributionControl: { compact: true }, maxBounds: [[-77.35, 38.70], [-76.75, 39.08]],
+    // antialias smooths wall and building edges; preserveDrawingBuffer only in dev so headless screenshots are reliable.
+    canvasContextAttributes: { antialias: true, preserveDrawingBuffer: process.env.NODE_ENV !== "production" },
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
   if (process.env.NODE_ENV !== "production") (window as unknown as { __rsMap: maplibregl.Map }).__rsMap = map;
@@ -29,6 +32,15 @@ const PALETTE = {
 /** Recolor OpenFreeMap Positron to the RideSim palette. */
 export function applyBasemapTheme(map: maplibregl.Map, dark: boolean) {
   const p = dark ? PALETTE.dark : PALETTE.light;
+  if (map.getLayer("rs-buildings")) {
+    // Paper-white model; taller buildings pick up a hint of the logo's city-block blue.
+    map.setPaintProperty("rs-buildings", "fill-extrusion-color", ["interpolate", ["linear"], ["coalesce", ["get", "render_height"], 8],
+      0, dark ? "#0f2747" : "#ffffff", 30, dark ? "#16345c" : "#eef3fb", 90, dark ? "#1f4675" : "#dce6f4"] as never);
+  }
+  map.setLight({ anchor: "map", position: [1.25, 210, 38], color: "#ffffff", intensity: dark ? 0.3 : 0.42 });
+  map.setSky(dark
+    ? { "sky-color": "#06182f", "horizon-color": "#123a63", "fog-color": "#06182f", "sky-horizon-blend": 0.6, "horizon-fog-blend": 0.6, "fog-ground-blend": 0.4 }
+    : { "sky-color": "#bfe3fb", "horizon-color": "#eef6fd", "fog-color": "#f6f9fd", "sky-horizon-blend": 0.6, "horizon-fog-blend": 0.5, "fog-ground-blend": 0.3 });
   const set = (id: string, prop: string, val: unknown) => {
     if (!map.getLayer(id)) return;
     try { map.setPaintProperty(id, prop as never, val as never); } catch { /* property not used by this layer */ }
@@ -73,6 +85,18 @@ export function addLayers(map: maplibregl.Map, net: Net, extras: Extras | null) 
   }, firstLabel);
   map.addLayer({ id: "rs-break", type: "line", source: "rs-break", layout: { "line-cap": "round" },
     paint: { "line-color": "#e5484d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 6, 16, 14], "line-opacity": 0.55, "line-blur": 2 } });
+  // DC in 3D: OSM building footprints (from DC government data) with real heights, as a white scale model.
+  if (map.getLayer("building")) map.setLayoutProperty("building", "visibility", "none");
+  map.addLayer({
+    id: "rs-buildings", type: "fill-extrusion", source: "openmaptiles", "source-layer": "building", minzoom: 13,
+    filter: ["!=", ["get", "hide_3d"], true],
+    paint: {
+      "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["coalesce", ["get", "render_height"], 8]],
+      "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["coalesce", ["get", "render_min_height"], 0]],
+      "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 0.92],
+      "fill-extrusion-vertical-gradient": true,
+    },
+  });
   map.addLayer({
     id: "rs-walls", type: "fill-extrusion", source: "rs-walls",
     paint: { "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.88, "fill-extrusion-vertical-gradient": true },
@@ -148,8 +172,11 @@ export function applyPaint(map: maplibregl.Map, s: PaintState) {
   map.setPaintProperty("rs-walls", "fill-extrusion-opacity", s.mode === "explore" ? 0.85 : s.mode === "build" ? 0.7 : 0.5);
   const h = ["match", ["get", "lts"], 2, LTS_HEIGHT[2] * modeScale, 3, LTS_HEIGHT[3] * modeScale, 4, LTS_HEIGHT[4] * modeScale, 0];
   const show = s.mode === "explore" ? true : [">", ["get", "lts"], s.threshold];
+  // Tall at city scale (buildings hidden), about a quarter height at street level so walls sit
+  // between DC's buildings (height limit keeps most under 40 m) instead of burying them.
+  const wallH = ["case", fixed, 0, show as never, ["*", h, s.wallScale], 0];
   map.setPaintProperty("rs-walls", "fill-extrusion-height",
-    ["case", fixed, 0, show as never, ["*", h, s.wallScale], 0] as never);
+    ["interpolate", ["linear"], ["zoom"], 12.5, wallH, 15, ["*", wallH, 0.26]] as never);
   map.setPaintProperty("rs-walls", "fill-extrusion-color", ["case", selected, "#082b54", ltsColor] as never);
 }
 

@@ -24,6 +24,9 @@
 - 2026-10-01: No deck.gl; ride trail and camera are MapLibre only.
 - 2026-10-01: shadcn removed after init (its base-nova button fought the 120% type scale); small primitives live in `components/ui.tsx`.
 - 2026-10-01: `react-hooks/refs` disabled in `MapApp.tsx` only (false positive on the ctx object; refs are read in effects/handlers).
+- 2026-10-01: 3D buildings are a `fill-extrusion` on OpenFreeMap's own `openmaptiles` `building` layer (`render_height`), styled as a white architect's model (Positron's flat `building` fill is hidden). DC's OSM buildings came from DC government data, so heights are real. Overture was measured (55% with height, 94% from OSM) and skipped. Buildings only carry heights from zoom 14, so the default view opens over downtown at zoom 13.4.
+- 2026-10-01: Wall height is zoom-dependent (full at city scale, 26% from zoom 15) so walls sit between buildings instead of towering over DC's height-limited skyline.
+- 2026-10-01: `preserveDrawingBuffer` is on in dev only, because headless screenshots of an idle WebGL canvas came back stale.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme + tour only (no accounts).
 
 ## Scaling cliff

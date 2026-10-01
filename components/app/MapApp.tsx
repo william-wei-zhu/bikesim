@@ -9,7 +9,9 @@ import {
   createMap, addLayers, applyBasemapTheme, applyPaint, applyIslands, setExtras as mapSetExtras, setPois, setSelected,
   setVisible, setData, riseWalls, DC_VIEW, type Mode,
 } from "@/lib/engine/map";
-import { lineFC, pointsFC, EMPTY_FC } from "@/lib/engine/geom";
+import { lineFC, pointsFC, EMPTY_FC, wallFootprints } from "@/lib/engine/geom";
+import { enablePhotoreal, type PhotorealHandle } from "@/lib/engine/photoreal";
+import { PhotorealCredits } from "./PhotorealCredits";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
 import type { AppCtx } from "./types";
@@ -19,6 +21,7 @@ import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
 
 const MODES: Mode[] = ["explore", "islands", "build", "ride"];
+const TILES_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const RIDER_KEYS = Object.keys(RIDERS) as Rider[];
 
 function readUrl() {
@@ -65,6 +68,9 @@ export default function MapApp() {
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
   const [ridePlaying, setRidePlaying] = useState(false);
   const [riding, setRiding] = useState(false);
+  const [photoreal, setPhotoreal] = useState(false);
+  const [credits, setCredits] = useState("");
+  const photoRef = useRef<PhotorealHandle | null>(null);
   const rideRef = useRef<Ride | null>(null);
   const wallScale = useRef(0);
   const layersAdded = useRef(false);
@@ -186,6 +192,33 @@ export default function MapApp() {
       { padding: window.innerWidth < 768 ? { top: 80, bottom: window.innerHeight * 0.5, left: 40, right: 40 } : { top: 80, bottom: 80, left: 480, right: 80 }, duration: 900, maxZoom: 15 });
   }, [routeKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---------- photoreal (Google 3D tiles, loaded only when switched on) ----------
+  const walls = useMemo(() => (net ? wallFootprints(net) : null), [net]);
+  const [photoTick, setPhotoTick] = useState(0); // bumps when the photoreal handle becomes ready
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !photoreal || !TILES_KEY) return;
+    let cancelled = false;
+    const hide = (on: boolean) => ["rs-walls", "rs-buildings", "rs-streets", "rs-route", "rs-route-casing", "rs-route-fast", "rs-break", "rs-rider"]
+      .forEach((id) => setVisible(map, id, !on));
+    hide(true);
+    enablePhotoreal(map, TILES_KEY, setCredits, (msg) => { toast(msg); setPhotoreal(false); })
+      .then((h) => { if (cancelled) h.destroy(); else { photoRef.current = h; setPhotoTick((t) => t + 1); } })
+      .catch(() => { toast("The photoreal view could not load. Showing the standard map."); setPhotoreal(false); });
+    return () => {
+      cancelled = true;
+      photoRef.current?.destroy(); photoRef.current = null;
+      setCredits(""); hide(false);
+    };
+  }, [photoreal, mapReady, toast]);
+  useEffect(() => {
+    const h = photoRef.current; if (!h || !net || !walls) return;
+    h.setRoute(routes && "calm" in routes ? routeLine(net, routes.calm).coords : null);
+    h.setWalls({ type: "FeatureCollection", features: walls.features.filter((f) => {
+      const e = Number(f.id); return net.elts[e] > threshold && !fixed.has(e);
+    }) });
+  }, [photoTick, routes, net, walls, threshold, fixed]);
+
   // ---------- URL state ----------
   useEffect(() => {
     const p = new URLSearchParams();
@@ -228,7 +261,7 @@ export default function MapApp() {
     if (!map || !net || !routes || !("calm" in routes)) return;
     const { coords, segEdge } = routeLine(net, routes.calm);
     rideRef.current?.stop();
-    const r = new Ride(map, coords, segEdge, (f) => setRideFrame(f), () => setRidePlaying(false));
+    const r = new Ride(map, coords, segEdge, (f) => { setRideFrame(f); photoRef.current?.setRider(f.pos); }, () => setRidePlaying(false));
     rideRef.current = r;
     setRiding(true);
     setRidePlaying(true);
@@ -275,8 +308,9 @@ export default function MapApp() {
     net, extras, mode, setMode, rider, threshold, fixed, toggleFix, addFixes, clearFixes, is,
     selEdge, setSelEdge, flat, setFlat, showCrashes, setShowCrashes,
     focus, setFocus, focusNode, from, to, setFrom, setTo, pick, setPick, flyTo, flyToEdge, startRide, toast,
+    photorealAvailable: !!TILES_KEY, photoreal, setPhotoreal,
   } : null), [net, extras, mode, setMode, rider, threshold, fixed, toggleFix, addFixes, clearFixes, is, selEdge, flat, showCrashes,
-    focus, focusNode, from, to, pick, flyTo, flyToEdge, startRide, toast]);
+    focus, focusNode, from, to, pick, flyTo, flyToEdge, startRide, toast, photoreal]);
 
   return (
     <div className="fixed inset-0 flex flex-col bg-paper">
@@ -293,8 +327,10 @@ export default function MapApp() {
             onSeek={(f) => rideRef.current?.seek(f)}
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
             onExit={stopRide}
+            photoreal={photoreal} onPhotoreal={TILES_KEY ? () => setPhotoreal((v) => !v) : undefined}
             isRideable={(e) => rideable(ctx.net, e, threshold, fixed)} />
         )}
+        {photoreal && <PhotorealCredits credits={credits} />}
         {pick && (
           <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.8rem] font-semibold text-primary-ink shadow-panel">
             {pick === "from" ? "Click the map to set your start" : pick === "to" ? "Click the map to set your destination" : "Click the map to pick a home"}

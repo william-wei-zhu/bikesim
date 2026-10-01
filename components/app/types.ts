@@ -19,6 +19,7 @@ export interface AppCtx {
   flyTo: (x: number, y: number, zoom?: number) => void;
   flyToEdge: (e: number) => void;
   startRide: () => void;
+  photorealAvailable: boolean; photoreal: boolean; setPhotoreal: (on: boolean) => void;
   toast: (msg: string) => void;
 }
 

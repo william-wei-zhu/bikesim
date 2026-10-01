@@ -21,12 +21,14 @@
 - 2026-10-01: Population from 2020 Census blocks (TIGER tabblock20 POP20), because the ACS API now requires a key. 689,545 residents snapped to nearest street node (median 63 m).
 - 2026-10-01: MapLibre v6 is ESM-only and loads its worker by URL; `scripts/copy-maplibre-worker.mjs` (postinstall) copies the worker + shared chunk to `public/maplibre/` and `createMap` calls `setWorkerUrl`. Do not delete.
 - 2026-10-01: MapLibre CSS sets `position: relative` on the map container, so the container sits inside an `absolute inset-0` wrapper. Do not put `absolute` on the container itself (map collapses to 150 px).
-- 2026-10-01: No deck.gl; ride trail and camera are MapLibre only.
+- 2026-10-01: No deck.gl in the default view; ride trail and camera are MapLibre only. (Corrected same day: deck.gl is used only for the opt-in photoreal mode, see below.)
 - 2026-10-01: shadcn removed after init (its base-nova button fought the 120% type scale); small primitives live in `components/ui.tsx`.
 - 2026-10-01: `react-hooks/refs` disabled in `MapApp.tsx` only (false positive on the ctx object; refs are read in effects/handlers).
 - 2026-10-01: 3D buildings are a `fill-extrusion` on OpenFreeMap's own `openmaptiles` `building` layer (`render_height`), styled as a white architect's model (Positron's flat `building` fill is hidden). DC's OSM buildings came from DC government data, so heights are real. Overture was measured (55% with height, 94% from OSM) and skipped. Buildings only carry heights from zoom 14, so the default view opens over downtown at zoom 13.4.
 - 2026-10-01: Wall height is zoom-dependent (full at city scale, 26% from zoom 15) so walls sit between buildings instead of towering over DC's height-limited skyline.
 - 2026-10-01: `preserveDrawingBuffer` is on in dev only, because headless screenshots of an idle WebGL canvas came back stale.
+- 2026-10-01: Photoreal mode = Google Photorealistic 3D Tiles via deck.gl `Tile3DLayer` in a `MapboxOverlay` (overlaid, not interleaved, because Google's mesh covers the ground). `lib/engine/photoreal.ts` dynamic-imports deck.gl only when the user toggles it, so the default view never calls Google. Walls, route and rider are redrawn as deck layers with `_TerrainExtension` so they sit on the real terrain; MapLibre's own walls/buildings/route are hidden while it's on. Google logo + aggregated tile credits (`PhotorealCredits.tsx`) are required.
+- 2026-10-01: GCP project `ridesimdc` (billing `william-1`), Map Tiles API only. Key `NEXT_PUBLIC_GOOGLE_TILES_KEY` (Vercel production + development, and `.env.local`) is restricted to ridesimdc.com, *.vercel.app and localhost:3311/3000 referrers and to tile.googleapis.com. Daily quota on `threedtiles_root_tileset` capped at 300 (first 1,000 sessions/month free, then $6 per 1,000). Preview env var not set (CLI refused); the toggle hides without a key.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme + tour only (no accounts).
 
 ## Scaling cliff

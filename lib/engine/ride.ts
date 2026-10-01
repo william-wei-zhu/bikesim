@@ -2,7 +2,7 @@
 import type * as maplibregl from "maplibre-gl";
 import { distM } from "./net";
 
-export interface RideFrame { distM: number; totalM: number; edgeIdx: number }
+export interface RideFrame { distM: number; totalM: number; edgeIdx: number; pos: [number, number] }
 
 export class Ride {
   private cum: number[] = [];
@@ -50,7 +50,7 @@ export class Ride {
     this.map.jumpTo({ center: p, bearing: this.bearing, pitch: 74, zoom: 17.8 }); // low enough to ride between buildings
     const src = this.map.getSource("rs-rider") as maplibregl.GeoJSONSource | undefined;
     src?.setData({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: p } }] });
-    this.onFrame({ distM: this.d, totalM: this.total, edgeIdx: this.edgeAt[seg] ?? -1 });
+    this.onFrame({ distM: this.d, totalM: this.total, edgeIdx: this.edgeAt[seg] ?? -1, pos: p });
   }
 
   play() {

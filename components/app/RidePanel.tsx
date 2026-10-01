@@ -95,6 +95,12 @@ export function RidePanel({ ctx, routes }: { ctx: AppCtx; routes: Routes }) {
           )}
 
           <Btn variant="primary" className="mt-4 w-full" onClick={ctx.startRide}><Bike className="size-4" /> Ride it</Btn>
+          {ctx.photorealAvailable && (
+            <Btn variant={ctx.photoreal ? "primary" : "outline"} size="sm" className="mt-2 w-full" aria-pressed={ctx.photoreal}
+              onClick={() => ctx.setPhotoreal(!ctx.photoreal)}>
+              {ctx.photoreal ? "Back to the white model" : "See it in photoreal 3D"}
+            </Btn>
+          )}
           <p className="mt-3 text-[0.75rem] text-ink-2">
             Ridden it for real? <TextLink href="https://ridescoredc.com/survey/" external>Tell RideScore DC how it felt</TextLink>.
           </p>

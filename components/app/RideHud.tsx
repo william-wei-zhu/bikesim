@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 
 const COLORS = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"];
 
-export function RideHud({ net, frame, playing, rider, fixed, onPlayPause, onSeek, onSpeed, onExit, isRideable }: {
+export function RideHud({ net, frame, playing, rider, fixed, onPlayPause, onSeek, onSpeed, onExit, isRideable, photoreal, onPhotoreal }: {
   net: Net; frame: RideFrame; playing: boolean; rider: Rider; fixed: Set<number>;
   onPlayPause: () => void; onSeek: (f: number) => void; onSpeed: (s: number) => void; onExit: () => void; isRideable: (e: number) => boolean;
+  photoreal: boolean; onPhotoreal?: () => void;
 }) {
   const [speed, setSpeed] = useState("1");
   const e = frame.edgeIdx;
@@ -45,7 +46,13 @@ export function RideHud({ net, frame, playing, rider, fixed, onPlayPause, onSeek
           className="h-2 flex-1 cursor-pointer accent-[var(--accent)]" />
         <span className="w-24 text-right font-mono text-[0.72rem]">{km(frame.distM)} / {km(frame.totalM)}</span>
       </div>
-      <div className="mt-3 flex justify-center">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+        {onPhotoreal && (
+          <button onClick={onPhotoreal} aria-pressed={photoreal}
+            className={cn("min-h-9 rounded-full border-2 px-4 text-[0.78rem] font-semibold cursor-pointer", photoreal ? "border-primary bg-primary text-primary-ink" : "border-ink bg-paper text-ink hover:bg-surface")}>
+            {photoreal ? "Photoreal on" : "Photoreal 3D"}
+          </button>
+        )}
         <Segmented label="Speed" value={speed} onChange={(v) => { setSpeed(v); onSpeed(Number(v)); }}
           options={[{ value: "0.5", label: "Slow" }, { value: "1", label: "1x" }, { value: "2", label: "2x" }, { value: "4", label: "4x" }]} />
       </div>

@@ -45,10 +45,9 @@ function legPoints(hip: THREE.Vector3, foot: THREE.Vector3, thigh = 0.46, shin =
   return knee;
 }
 
-export function createBikeLayer(map: MLMap): BikeLayer {
-  let renderer: THREE.WebGLRenderer;
+/** The bike + rider scene, animated by update(); shared by the map layer and the Street View overlay. */
+function createBikeModel() {
   const scene = new THREE.Scene();
-  const camera = new THREE.Camera();
   const root = new THREE.Group();       // positioned/rotated per frame
   const lean = new THREE.Group();       // roll into turns
   root.add(lean);
@@ -106,8 +105,7 @@ export function createBikeLayer(map: MLMap): BikeLayer {
   ring.position.y = 0.02; shadow.position.y = 0.01;
   root.add(shadow, ring);
 
-  const pose = { pos: [0, 0] as [number, number], heading: 0, prevHeading: 0, lts: 1, moving: false, visible: false, at: 0 };
-  let crankAngle = 0, wheelAngle = 0, roll = 0, last = performance.now(), pulse = 0;
+  let crankAngle = 0, wheelAngle = 0, roll = 0, pulse = 0;
 
   function rebuildLegs() {
     for (const c of legGroup.children) (c as THREE.Mesh).geometry.dispose();
@@ -121,6 +119,27 @@ export function createBikeLayer(map: MLMap): BikeLayer {
     }
   }
 
+  /** Advance the animation: dt in seconds, turnDeg = heading change since last frame. */
+  function update(dt: number, moving: boolean, lts: number, turnDeg: number) {
+    if (moving) { crankAngle += dt * 5.5; wheelAngle -= dt * 14; }
+    rear.rotation.x = wheelAngle; front.rotation.x = wheelAngle; crank.rotation.x = -crankAngle;
+    rebuildLegs();
+    roll += (THREE.MathUtils.clamp(-turnDeg * 0.06, -0.35, 0.35) - roll) * 0.08; // lean into turns, eased
+    lean.rotation.z = roll;
+    pulse += dt;
+    ringMat.color.setHex(STRESS[lts] ?? GREEN);
+    ringMat.opacity = 0.4 + 0.2 * Math.sin(pulse * 3);
+  }
+
+  return { scene, update };
+}
+
+export function createBikeLayer(map: MLMap): BikeLayer {
+  let renderer: THREE.WebGLRenderer;
+  const { scene, update } = createBikeModel();
+  const camera = new THREE.Camera();
+  const pose = { pos: [0, 0] as [number, number], heading: 0, prevHeading: 0, lts: 1, moving: false, visible: false, at: 0 };
+  let last = performance.now();
   return {
     id: "rs-bike",
     type: "custom",
@@ -139,16 +158,7 @@ export function createBikeLayer(map: MLMap): BikeLayer {
       const now = performance.now();
       const dt = Math.min(0.1, (now - last) / 1000); last = now;
       const moving = pose.moving && now - pose.at < 250; // frames stop arriving when the ride is paused
-      if (moving) { crankAngle += dt * 5.5; wheelAngle -= dt * 14; }
-      rear.rotation.x = wheelAngle; front.rotation.x = wheelAngle; crank.rotation.x = -crankAngle;
-      rebuildLegs();
-      // Lean into turns (heading change rate), eased.
-      const turn = ((pose.heading - pose.prevHeading + 540) % 360) - 180;
-      roll += (THREE.MathUtils.clamp(-turn * 0.06, -0.35, 0.35) - roll) * 0.08;
-      lean.rotation.z = roll;
-      pulse += dt;
-      ringMat.color.setHex(STRESS[pose.lts] ?? GREEN);
-      ringMat.opacity = 0.4 + 0.2 * Math.sin(pulse * 3);
+      update(dt, moving, pose.lts, ((pose.heading - pose.prevHeading + 540) % 360) - 180);
 
       // Place in Mercator space; scale so the rider stays ~ON_SCREEN_PX tall at any zoom.
       const mc = MercatorCoordinate.fromLngLat({ lng: pose.pos[0], lat: pose.pos[1] }, 0);
@@ -165,5 +175,55 @@ export function createBikeLayer(map: MLMap): BikeLayer {
       if (moving) map.triggerRepaint();
     },
     onRemove() { renderer?.dispose(); },
+  };
+}
+
+export interface BikeOverlay {
+  setState(lts: number, moving: boolean, headingDeg: number): void;
+  destroy(): void;
+}
+
+/** The same rider drawn over Street View on its own transparent canvas, seen from behind like a racing game. */
+export function createBikeOverlay(host: HTMLElement): BikeOverlay {
+  const { scene, update } = createBikeModel();
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("aria-hidden", "true");
+  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;";
+  host.appendChild(canvas);
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  camera.position.set(0, 2.5, 7.4);    // behind and above the rider
+  camera.lookAt(0, 0.6, -8);            // looking down the road, rider small in the lower third
+  const state = { lts: 1, moving: false, heading: 0, prevHeading: 0, at: 0 };
+  let last = performance.now(), raf = 0;
+
+  const resize = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    // Keep the rider a similar size on phones (portrait) and desktops (landscape).
+    camera.fov = w / h < 1 ? 50 : 36;
+    camera.updateProjectionMatrix();
+  };
+  const ro = new ResizeObserver(resize);
+  ro.observe(host);
+  resize();
+
+  const loop = () => {
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const moving = state.moving && now - state.at < 250;
+    update(dt, moving, state.lts, ((state.heading - state.prevHeading + 540) % 360) - 180);
+    state.prevHeading = state.heading;
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+
+  return {
+    setState(lts, moving, headingDeg) { state.lts = lts; state.moving = moving; state.heading = headingDeg; state.at = performance.now(); },
+    destroy() { cancelAnimationFrame(raf); ro.disconnect(); renderer.dispose(); canvas.remove(); },
   };
 }

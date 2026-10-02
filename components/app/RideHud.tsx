@@ -71,6 +71,7 @@ export function RideHud({ net, frame, playing, view, views, onView, onPlayPause,
             className="h-2 flex-1 cursor-pointer accent-[var(--accent)]" />
           <span className="w-24 text-right font-mono text-[0.75rem]">{km(frame.distM)} / {km(frame.totalM)}</span>
         </div>
+        {view === "model" && <p className="mt-2 text-center text-[0.75rem] text-ink-2">Drag the map to look around the rider · double-click to reset</p>}
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <Segmented<View> label="Ride view" value={view} onChange={onView} options={views} />
           <Segmented label="Speed" value={speed} onChange={(v) => { setSpeed(v); onSpeed(Number(v)); }}

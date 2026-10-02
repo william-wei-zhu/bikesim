@@ -5,7 +5,7 @@ import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
 import { Btn, Card, Segmented, km } from "@/components/ui";
-import type { Routes, View } from "./types";
+import type { Routes, View, RouteKind } from "./types";
 import { cn } from "@/lib/utils";
 
 const EXAMPLES: { label: string; from: Place; to: Place }[] = [
@@ -17,7 +17,7 @@ const BAR = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"];
 const SPEED_KMH = 16; // typical everyday cycling pace, for the time estimate
 
 export function TripPanel(p: {
-  pois: Poi[]; routes: Routes; stretches: Stretch[];
+  pois: Poi[]; routes: Routes; kind: RouteKind; setKind: (k: RouteKind) => void; stretches: Stretch[];
   from: Place | null; to: Place | null; setFrom: (x: Place | null) => void; setTo: (x: Place | null) => void;
   setPick: (k: "from" | "to") => void; view: View; setView: (v: View) => void; views: { value: View; label: string }[];
   onRide: () => void; onFlyTo: (s: Stretch) => void;
@@ -26,9 +26,16 @@ export function TripPanel(p: {
   const ok = p.routes && "calm" in p.routes ? p.routes : null;
   const hostile = p.stretches.filter((s) => s.lts === 4);
   const hostileM = hostile.reduce((a, s) => a + s.lengthM, 0);
-  const minutes = ok ? Math.max(1, Math.round((ok.calm.lengthM / 1000 / SPEED_KMH) * 60)) : 0;
+  const chosen = ok ? (p.kind === "short" ? ok.fastest : ok.calm) : null;
+  const minutes = chosen ? Math.max(1, Math.round((chosen.lengthM / 1000 / SPEED_KMH) * 60)) : 0;
+  const same = ok ? ok.calm.edges.join() === ok.fastest.edges.join() : false;
   const extra = ok ? ok.calm.lengthM - ok.fastest.lengthM : 0;
-
+  const hostileDiff = ok ? ok.fastest.byLts[4] - ok.calm.byLts[4] : 0;
+  const compare = !ok ? "" : same || (extra < 50 && hostileDiff < 10)
+    ? "The lowest-stress route is also the shortest."
+    : p.kind === "calm"
+      ? `${km(extra)} longer than the shortest route (dotted), with ${km(Math.max(0, hostileDiff))} less hostile riding.`
+      : `${km(extra)} shorter than the lowest-stress route (dotted), with ${km(Math.max(0, hostileDiff))} more hostile riding.`;
 
   return (
     <aside aria-label="Trip" className={cn(
@@ -91,20 +98,25 @@ export function TripPanel(p: {
         {ok && (
           <>
             <div className="mt-4">
+              <p className="eyebrow mb-2">Route</p>
+              <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}
+                options={[{ value: "calm", label: `Lowest stress · ${km(ok.calm.lengthM)}` }, { value: "short", label: `Shortest · ${km(ok.fastest.lengthM)}` }]} />
+            </div>
+            <div className="mt-4">
               <p className="eyebrow mb-2">Ride it in</p>
-              <Segmented<View> label="Ride view" value={p.view} onChange={p.setView} options={p.views} />
+              <Segmented<View> stretch label="Ride view" value={p.view} onChange={p.setView} options={p.views} />
             </div>
             <Btn variant="primary" className="mt-3 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
             <div className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4">
-              <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(ok.calm.lengthM)}</p><p className="eyebrow mt-1">Distance</p></div>
+              <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(chosen!.lengthM)}</p><p className="eyebrow mt-1">Distance</p></div>
               <div><p className="font-display text-[1.5rem] font-bold leading-tight">{minutes} min</p><p className="eyebrow mt-1">At {SPEED_KMH} km/h</p></div>
               <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(hostileM)}</p><p className="eyebrow mt-1">Hostile</p></div>
             </div>
 
             <div className="mt-4">
               <div className="flex h-3.5 overflow-hidden rounded-full" aria-label="Distance by stress level">
-                {[1, 2, 3, 4].map((l) => ok.calm.byLts[l] > 0 && (
-                  <div key={l} className={BAR[l]} style={{ width: `${(ok.calm.byLts[l] / ok.calm.lengthM) * 100}%` }} />
+                {[1, 2, 3, 4].map((l) => chosen!.byLts[l] > 0 && (
+                  <div key={l} className={BAR[l]} style={{ width: `${(chosen!.byLts[l] / chosen!.lengthM) * 100}%` }} />
                 ))}
               </div>
               <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
@@ -112,7 +124,7 @@ export function TripPanel(p: {
                   <li key={l} className="flex items-center gap-2 text-[0.8rem]">
                     <span className={cn("size-3 shrink-0 rounded-full", BAR[l])} aria-hidden />
                     <span className="flex-1">{LTS_INFO[l]!.name}</span>
-                    <span className="font-mono text-[0.75rem]">{km(ok.calm.byLts[l])}</span>
+                    <span className="font-mono text-[0.75rem]">{km(chosen!.byLts[l])}</span>
                   </li>
                 ))}
               </ul>
@@ -120,7 +132,7 @@ export function TripPanel(p: {
 
             {hostile.length > 0 && (
               <div className="mt-4">
-                <p className="eyebrow mb-2">Hostile stretches you can&apos;t avoid</p>
+                <p className="eyebrow mb-2">{p.kind === "calm" ? "Hostile stretches you can't avoid" : "Hostile stretches on this route"}</p>
                 <ul className="space-y-1.5">
                   {hostile.slice(0, 6).map((s) => (
                     <li key={s.startM}>
@@ -135,9 +147,7 @@ export function TripPanel(p: {
               </div>
             )}
 
-            <p className="mt-3 text-[0.8rem] text-ink-2">
-              {extra < 50 ? "This is also the shortest route." : `Avoids hostile streets where it can, ${km(extra)} longer than the shortest route (dotted).`}
-            </p>
+            <p className="mt-3 text-[0.8rem] text-ink-2">{compare}</p>
 
           </>
         )}

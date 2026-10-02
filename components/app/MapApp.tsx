@@ -5,12 +5,12 @@ import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
 import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, DC_VIEW } from "@/lib/engine/map";
-import type { BikeLayer } from "@/lib/engine/bike3d";
+import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, type StreetViewHandle } from "@/lib/engine/streetview";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
-import type { Routes, View } from "./types";
+import type { Routes, View, RouteKind } from "./types";
 import { Header } from "./Header";
 import { TripPanel } from "./TripPanel";
 import { RideHud } from "./RideHud";
@@ -21,7 +21,7 @@ const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
   ? [{ value: "street", label: "Street View" }, { value: "model", label: "3D model" }]
   : [{ value: "model", label: "3D model" }];
-const STREET_MAX_MPS = 22; // Street View hops photo to photo; faster than this and it can't keep up
+const STREET_MAX_MPS = 10; // Street View pace at 1x (about 36 km/h, twice a typical ride) so photos can keep up
 
 function readUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -31,12 +31,13 @@ function readUrl() {
     const X = Number(x), Y = Number(y);
     return Number.isFinite(X) && Number.isFinite(Y) ? { x: X, y: Y, label: rest.join(",") || "Dropped pin" } : null;
   };
-  return { from: place("from"), to: place("to") };
+  return { from: place("from"), to: place("to"), kind: (p.get("route") === "short" ? "short" : "calm") as RouteKind };
 }
 
 export default function MapApp() {
   const mapEl = useRef<HTMLDivElement>(null);
   const streetEl = useRef<HTMLDivElement>(null);
+  const overlayEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [net, setNet] = useState<Net | null>(null);
@@ -50,6 +51,7 @@ export default function MapApp() {
   const [from, setFrom] = useState<Place | null>(init?.from ?? null);
   const [to, setTo] = useState<Place | null>(init?.to ?? null);
   const [pick, setPick] = useState<"from" | "to" | null>(null);
+  const [kind, setKind] = useState<RouteKind>(init?.kind ?? "calm");
   const [view, setView] = useState<View>(() => (GOOGLE_KEY && typeof window !== "undefined" ? readDefaultView() : "model"));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
@@ -59,6 +61,7 @@ export default function MapApp() {
   const rideRef = useRef<Ride | null>(null);
   const streetRef = useRef<StreetViewHandle | null>(null);
   const bikeRef = useRef<BikeLayer | null>(null);
+  const overlayRef = useRef<BikeOverlay | null>(null);
   const layersAdded = useRef(false);
 
   const toast = useCallback((m: string) => { setToastMsg(m); window.setTimeout(() => setToastMsg((c) => (c === m ? null : c)), 3500); }, []);
@@ -90,8 +93,11 @@ export default function MapApp() {
     return { a, b, calm: pair.calm, fastest: pair.fastest };
   }, [net, from, to]);
   const ok = routes && "calm" in routes ? routes : null;
-  const stretches = useMemo(() => (net && ok ? toStretches(net, ok.calm, (e) => edgeName(net, e)) : []), [net, ok]);
-  const line = useMemo(() => (net && ok ? routeLine(net, ok.calm) : null), [net, ok]);
+  // The route being ridden, and the other one (shown dotted for comparison).
+  const chosen = ok ? (kind === "short" ? ok.fastest : ok.calm) : null;
+  const other = ok ? (kind === "short" ? ok.calm : ok.fastest) : null;
+  const stretches = useMemo(() => (net && chosen ? toStretches(net, chosen, (e) => edgeName(net, e)) : []), [net, chosen]);
+  const line = useMemo(() => (net && chosen ? routeLine(net, chosen) : null), [net, chosen]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -107,11 +113,11 @@ export default function MapApp() {
     const map = mapRef.current; if (!map || !layersAdded.current || !net) return;
     applyPaint(map, { hasRoute: !!ok });
     setEndpoints(map, from ? [from.x, from.y] : null, to ? [to.x, to.y] : null);
-    if (ok && line) {
+    if (chosen && other && line) {
       setData(map, "rs-route", lineFC(line.coords));
-      setRouteGradient(map, stretches.map((s) => ({ at: s.startM / ok.calm.lengthM, lts: s.lts })));
-      const same = ok.fastest.edges.join() === ok.calm.edges.join();
-      setData(map, "rs-route-fast", same ? EMPTY_FC : lineFC(routeLine(net, ok.fastest).coords));
+      setRouteGradient(map, stretches.map((s) => ({ at: s.startM / chosen.lengthM, lts: s.lts })));
+      const same = other.edges.join() === chosen.edges.join();
+      setData(map, "rs-route-fast", same ? EMPTY_FC : lineFC(routeLine(net, other).coords));
       setData(map, "rs-break", { type: "FeatureCollection", features: stretches.filter((s) => s.lts === 4).flatMap((s) => s.edges).map((e) => {
         const c = net.ecoords[e]; const coords: [number, number][] = [];
         for (let k = 0; k < c.length; k += 2) coords.push([c[k], c[k + 1]]);
@@ -120,7 +126,7 @@ export default function MapApp() {
     } else {
       for (const id of ["rs-route", "rs-route-fast", "rs-break"]) setData(map, id, EMPTY_FC);
     }
-  }, [ok, line, stretches, from, to, net, mapReady]);
+  }, [ok, chosen, other, line, stretches, from, to, net, mapReady]);
 
   const routeKey = ok ? `${ok.a}-${ok.b}` : "";
   useEffect(() => {
@@ -134,28 +140,42 @@ export default function MapApp() {
     const enc = (pl: Place) => `${pl.x.toFixed(5)},${pl.y.toFixed(5)},${pl.label}`;
     if (from) p.set("from", enc(from));
     if (to) p.set("to", enc(to));
+    if (kind === "short") p.set("route", "short");
     const q = p.toString();
     window.history.replaceState(null, "", q ? `${window.location.pathname}?${q}` : window.location.pathname);
-  }, [from, to]);
+  }, [from, to, kind]);
 
   // ---------- ride views ----------
-  // Street View: real photos, one panorama load per ride, moved along with the rider.
+  // Street View: real photos, two panorama loads per ride, crossfaded photo to photo along the route.
   useEffect(() => {
     const el = streetEl.current;
-    if (!el || !riding || view !== "street" || !GOOGLE_KEY || !line) return;
+    const r = rideRef.current;
+    if (!el || !riding || view !== "street" || !GOOGLE_KEY || !line || !r) return;
     let cancelled = false;
-    const f = rideRef.current?.current;
-    createStreetView(el, GOOGLE_KEY, f?.pos ?? line.coords[0], f?.heading ?? 0, (has) => setNoPhotos(!has))
-      .then((h) => { if (cancelled) h.destroy(); else streetRef.current = h; })
+    const f = r.current;
+    createStreetView(el, GOOGLE_KEY, (d) => r.positionAt(d), f?.distM ?? 0, f?.heading ?? 0, (has) => setNoPhotos(!has))
+      .then((h) => {
+        if (cancelled) { h.destroy(); return; }
+        streetRef.current = h;
+        r.limit = () => h.maxDistance();
+      })
       .catch(() => { toast("Street View could not load. Showing the 3D model."); setView("model"); });
-    if (rideRef.current) rideRef.current.maxMps = STREET_MAX_MPS;
+    r.maxMps = STREET_MAX_MPS;
+    // The same 3D rider, drawn over the photos from behind (three.js loads with the first ride).
+    const ov = overlayEl.current;
+    if (ov) import("@/lib/engine/bike3d").then(({ createBikeOverlay }) => {
+      if (cancelled) return;
+      overlayRef.current = createBikeOverlay(ov);
+      overlayRef.current.setState(f && f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1, false, f?.heading ?? 0);
+    }).catch(() => { /* photos still work without the rider */ });
     return () => {
       cancelled = true;
+      overlayRef.current?.destroy(); overlayRef.current = null;
       streetRef.current?.destroy(); streetRef.current = null;
+      r.limit = null; r.maxMps = Infinity;
       setNoPhotos(false);
-      if (rideRef.current) rideRef.current.maxMps = Infinity;
     };
-  }, [riding, view, line, toast]);
+  }, [riding, view, line, toast, net]);
 
   const stopRide = useCallback(() => {
     rideRef.current?.stop(); rideRef.current = null;
@@ -172,11 +192,14 @@ export default function MapApp() {
     rideRef.current?.stop();
     const r = new Ride(map, line.coords, line.segEdge, (f) => {
       setRideFrame(f);
-      streetRef.current?.follow(f.pos, f.heading);
-      bikeRef.current?.setPose(f.pos, f.heading, f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1, true);
+      streetRef.current?.follow(f.distM, f.heading);
+      const lts = f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1;
+      bikeRef.current?.setPose(f.pos, f.heading, lts, true);
+      overlayRef.current?.setState(lts, true, f.heading);
     }, () => setRidePlaying(false));
     if (view === "street") r.maxMps = STREET_MAX_MPS;
     rideRef.current = r;
+    r.enableOrbit(); // drag to look around the rider in the 3D view
     setRiding(true); setRidePlaying(true);
     // The 3D bike (three.js) loads only when a ride starts.
     import("@/lib/engine/bike3d").then(({ createBikeLayer }) => {
@@ -220,9 +243,10 @@ export default function MapApp() {
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label="3D map of Washington, DC streets colored by bike stress" role="region" /></div>
         <div ref={streetEl} className={riding && view === "street" ? "absolute inset-0 z-[5]" : "hidden"} aria-label="Street View along the route" />
+        <div ref={overlayEl} className={riding && view === "street" ? "pointer-events-none absolute inset-0 z-[6]" : "hidden"} />
         {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
         {net && !riding && (
-          <TripPanel pois={pois} routes={routes} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
+          <TripPanel pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
             setPick={setPick} view={view} setView={setView} views={VIEWS} onRide={startRide} onFlyTo={flyToStretch} />
         )}
         {net && riding && rideFrame && (

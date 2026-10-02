@@ -20,11 +20,13 @@ export function Btn({ variant = "outline", size = "md", className, ...p }: BtnPr
   );
 }
 
-export function Segmented<T extends string>({ value, options, onChange, label, className }: {
+export function Segmented<T extends string>({ value, options, onChange, label, className, stretch }: {
   value: T; options: { value: T; label: string; title?: string }[]; onChange: (v: T) => void; label: string; className?: string;
+  /** Fill the container width with equal-width options. */
+  stretch?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className={cn("inline-flex rounded-full border border-line bg-surface p-1", className)}>
+    <div role="radiogroup" aria-label={label} className={cn("rounded-full border border-line bg-surface p-1", stretch ? "flex w-full" : "inline-flex", className)}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -33,7 +35,8 @@ export function Segmented<T extends string>({ value, options, onChange, label, c
           title={o.title}
           onClick={() => onChange(o.value)}
           className={cn(
-            "min-h-9 rounded-full px-3.5 text-[0.78rem] font-semibold transition-colors cursor-pointer",
+            "min-h-9 rounded-full px-3.5 text-[0.78rem] font-semibold transition-colors cursor-pointer whitespace-nowrap",
+            stretch && "flex-1 px-2",
             value === o.value ? "bg-primary text-primary-ink shadow-sm" : "text-ink hover:bg-paper",
           )}
         >

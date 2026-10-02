@@ -125,6 +125,24 @@ h1, h2, h3, .font-display {
 .dark .rs-pin-start { --pin-bg: #eef3fb; --pin-fg: #082b54; --pin-ring: #082b54; }
 .dark .rs-pin-end { --pin-bg: #2cc47e; --pin-fg: #06182f; --pin-ring: #06182f; }
 
+/* "Start the ride": the one green button. Deep route green: white bold text at ~4.4:1 (large text needs 3:1). */
+.rs-ride-cta {
+  background: #0f8a55;
+  box-shadow: 0 8px 22px rgb(15 138 85 / 0.35);
+  animation: rs-cta-pop 520ms cubic-bezier(0.2, 1.5, 0.4, 1) both, rs-cta-ring 1.3s ease-out 600ms 3;
+}
+.rs-ride-cta:hover { background: #0c7a4a; }
+.dark .rs-ride-cta { background: #1cae6d; color: #06182f; box-shadow: 0 8px 22px rgb(44 196 126 / 0.3); }
+.dark .rs-ride-cta:hover { background: #2cc47e; }
+@keyframes rs-cta-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes rs-cta-ring {
+  0% { box-shadow: 0 8px 22px rgb(15 138 85 / 0.35), 0 0 0 0 rgb(28 174 109 / 0.55); }
+  100% { box-shadow: 0 8px 22px rgb(15 138 85 / 0.35), 0 0 0 16px rgb(28 174 109 / 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

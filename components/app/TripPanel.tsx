@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ArrowUpDown, Bike, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
@@ -86,7 +86,12 @@ export function TripPanel(p: {
 
         {ok && (
           <>
-            <Btn variant="primary" className="mt-4 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
+            {/* The call to action once a trip is set: route green, larger, pops in and pulses three times (replays per trip). */}
+            <button key={`${ok.a}-${ok.b}`} onClick={p.onRide}
+              className="rs-ride-cta group mt-4 flex min-h-14 w-full cursor-pointer items-center justify-center gap-2.5 rounded-full text-[1.05rem] font-bold text-white">
+              <Bike className="size-5" aria-hidden /> Start the ride
+              <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" aria-hidden />
+            </button>
             <div className="mt-4">
               <p className="eyebrow mb-2">Route</p>
               <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}

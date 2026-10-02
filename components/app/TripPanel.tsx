@@ -32,13 +32,16 @@ export function TripPanel(p: {
       "inset-x-0 bottom-0 max-h-[50%] rounded-t-3xl",
       "md:inset-x-auto md:bottom-auto md:left-4 md:top-4 md:max-h-[calc(100%-2rem)] md:w-[420px] md:rounded-card",
     )}>
+      {/* Phones: the handle collapses the whole sheet to a slim bar so the full map shows. */}
       <button onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed}
-        className="flex items-center justify-center gap-2 py-1.5 md:hidden cursor-pointer">
+        className={cn("flex items-center justify-center gap-2 md:hidden cursor-pointer", collapsed ? "min-h-12 py-2" : "py-1.5")}>
         <span className="h-1.5 w-10 rounded-full bg-line" />
         {collapsed ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        <span className="sr-only">{collapsed ? "Show trip" : "Hide trip"}</span>
+        {collapsed
+          ? <span className="text-[0.85rem] font-semibold">Show trip</span>
+          : <span className="sr-only">Hide trip and show the full map</span>}
       </button>
-      <div className="overflow-y-auto px-5 pb-5 md:pt-5">
+      <div className={cn("overflow-y-auto px-5 pb-5 md:block md:pt-5", collapsed && "hidden")}>
         {!ok && <h2 className="text-[1.5rem] font-bold">Feel it before you ride it.</h2>}
         {!ok && (
           <p className="mt-2 text-[0.85rem] text-ink-2">
@@ -46,7 +49,7 @@ export function TripPanel(p: {
           </p>
         )}
 
-        <div className={cn(!ok && "mt-4", "space-y-2", collapsed && "hidden md:block")}>
+        <div className={cn(!ok && "mt-4", "space-y-2")}>
           <div className={cn("flex items-center gap-2 rounded-full", p.awaiting === "from" && "ring-2 ring-accent ring-offset-2 ring-offset-paper")}>
             <div className="flex-1"><SearchBox placeholder="Start: search, or click the map" pois={p.pois} value={p.from} onPick={p.setFrom} onClear={() => p.setFrom(null)} /></div>
             {!p.from && <PickBtn on={() => p.setPick("from")} />}

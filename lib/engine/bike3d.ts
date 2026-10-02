@@ -12,7 +12,9 @@ const C = {
   saddle: 0x15191e, grip: 0x22262c, white: 0xf5f7fa, shoe: 0x1d2530, shoeSole: 0xeef3fb,
 };
 const STRESS = [0x1cae6d, 0x1cae6d, 0x9bd65a, 0xf5a524, 0xe5484d];
-const ON_SCREEN_PX = 150; // rider height on screen in the 3D view, independent of zoom
+/** Rider height on screen in the 3D view, independent of map zoom: 19% of the map height on landscape screens,
+ * 27% on portrait phones (where the old fixed 150 px looked tiny). */
+const riderPx = (w: number, h: number) => Math.max(150, Math.min(280, h * (w < h ? 0.27 : 0.19)));
 
 interface RiderSpec {
   jersey: number; stripe: number; legs: number; legsToAnkle: boolean; skin: number; hair: number;
@@ -282,7 +284,7 @@ export function createBikeLayer(map: MLMap, style: RiderStyle = "male"): BikeLay
       // Place in Mercator space; scale so the rider stays ~ON_SCREEN_PX tall at any zoom.
       const mc = MercatorCoordinate.fromLngLat({ lng: pose.pos[0], lat: pose.pos[1] }, 0);
       const metresPerPx = (40075016.686 * Math.cos((pose.pos[1] * Math.PI) / 180)) / (512 * Math.pow(2, map.getZoom()));
-      const s = mc.meterInMercatorCoordinateUnits() * ((metresPerPx * ON_SCREEN_PX) / 1.75);
+      const s = mc.meterInMercatorCoordinateUnits() * ((metresPerPx * riderPx(map.getCanvas().clientWidth, map.getCanvas().clientHeight)) / 1.75);
       const transform = new THREE.Matrix4()
         .makeTranslation(mc.x, mc.y, mc.z)
         .scale(new THREE.Vector3(s, -s, s))
@@ -305,14 +307,14 @@ export interface BikeOverlay {
 }
 
 const EYE_HEIGHT_M = 2.5;   // Street View cameras sit roughly at car-roof height
-const RIDER_AHEAD_M = 6;    // the rider rides this far ahead of the camera, on the road
 
 /** The same rider drawn over Street View on a transparent canvas whose camera matches the panorama's:
  * same position, same field of view, same yaw and pitch. The rider is a fixed point on the road, so when you
  * look around, rider and street move together and the rider never slides across the road. */
-export function createBikeOverlay(host: HTMLElement, style: RiderStyle = "male", hfovDeg = 103, basePitchDeg = -3): BikeOverlay {
+/** riderAheadM: how far ahead of the camera the rider rides, on the road (closer on phones so it reads larger). */
+export function createBikeOverlay(host: HTMLElement, style: RiderStyle = "male", hfovDeg = 103, basePitchDeg = -3, riderAheadM = 6): BikeOverlay {
   const { scene, update, root } = createBikeModel(style);
-  root.position.set(0, 0, -RIDER_AHEAD_M); // facing -z, the direction of travel
+  root.position.set(0, 0, -riderAheadM); // facing -z, the direction of travel
   const canvas = document.createElement("canvas");
   canvas.setAttribute("aria-hidden", "true");
   canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;";

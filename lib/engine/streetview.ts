@@ -21,9 +21,11 @@ const SLOTS = 3;
 const STEP_M = 11;          // distance between photos (Google's photos are roughly 8 to 12 m apart)
 const FADE_MS = 700;        // new photo fades in on top of the old
 const DOLLY = 0.16;         // CSS scale gained while riding from one photo to the next
-const ZOOM = 0.8;           // fixed panorama zoom (changing it refetches tiles)
-/** Horizontal field of view of our panoramas (Google: fov = 180 / 2^zoom); the 3D rider overlay uses the same lens. */
-export const STREETVIEW_HFOV_DEG = 180 / Math.pow(2, ZOOM);
+/** Fixed panorama zoom (changing it mid-ride refetches tiles). Phones zoom in: portrait screens are narrow,
+ * and a wide lens makes the street and the rider tiny. */
+export const streetViewZoom = (narrow: boolean) => (narrow ? 1.5 : 0.8);
+/** Horizontal field of view for a zoom (Google: fov = 180 / 2^zoom); the 3D rider overlay uses the same lens. */
+export const streetViewHfov = (narrow: boolean) => 180 / Math.pow(2, streetViewZoom(narrow));
 /** Panorama pitch when looking straight ahead. */
 export const STREETVIEW_BASE_PITCH = -3;
 let optionsSet = false;
@@ -33,7 +35,7 @@ interface Slot { el: HTMLDivElement; pano: Pano; ready: boolean; panoId: string;
 
 export async function createStreetView(
   host: HTMLElement, apiKey: string, pointAt: (d: number) => [number, number], startDist: number, heading: number,
-  onCoverage: (hasPhotos: boolean) => void, onLook: (look: Look) => void,
+  onCoverage: (hasPhotos: boolean) => void, onLook: (look: Look) => void, zoom = streetViewZoom(false),
 ): Promise<StreetViewHandle> {
   if (!optionsSet) { setOptions({ key: apiKey, v: "weekly" }); optionsSet = true; }
   const { StreetViewPanorama } = await importLibrary("streetView");
@@ -47,7 +49,7 @@ export async function createStreetView(
     host.appendChild(el);
     const pano = new StreetViewPanorama(el, {
       disableDefaultUI: true, clickToGo: false, linksControl: false, showRoadLabels: false,
-      motionTracking: false, motionTrackingControl: false, scrollwheel: false, zoom: ZOOM,
+      motionTracking: false, motionTrackingControl: false, scrollwheel: false, zoom,
       pov: { heading, pitch: -3 },
     });
     return { el, pano, ready: false, panoId: "", target: 0 };

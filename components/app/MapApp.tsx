@@ -7,7 +7,7 @@ import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/
 import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, DC_VIEW } from "@/lib/engine/map";
 import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
-import { createStreetView, STREETVIEW_HFOV_DEG, STREETVIEW_BASE_PITCH, type StreetViewHandle } from "@/lib/engine/streetview";
+import { createStreetView, streetViewZoom, streetViewHfov, STREETVIEW_BASE_PITCH, type StreetViewHandle } from "@/lib/engine/streetview";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
 import type { Routes, View, RouteKind } from "./types";
@@ -154,8 +154,10 @@ export default function MapApp() {
     if (!el || !riding || view !== "street" || !GOOGLE_KEY || !line || !r) return;
     let cancelled = false;
     const f = r.current;
+    // Phones (portrait) zoom the panorama in and bring the rider closer, so neither looks tiny.
+    const narrow = el.clientWidth < el.clientHeight || el.clientWidth < 768;
     createStreetView(el, GOOGLE_KEY, (d) => r.positionAt(d), f?.distM ?? 0, f?.heading ?? 0, (has) => setNoPhotos(!has),
-      (look) => overlayRef.current?.setLook(look.yaw, look.pitch))
+      (look) => overlayRef.current?.setLook(look.yaw, look.pitch), streetViewZoom(narrow))
       .then((h) => {
         if (cancelled) { h.destroy(); return; }
         streetRef.current = h;
@@ -167,7 +169,7 @@ export default function MapApp() {
     const ov = overlayEl.current;
     if (ov) import("@/lib/engine/bike3d").then(({ createBikeOverlay }) => {
       if (cancelled) return;
-      overlayRef.current = createBikeOverlay(ov, readRider(), STREETVIEW_HFOV_DEG, STREETVIEW_BASE_PITCH);
+      overlayRef.current = createBikeOverlay(ov, readRider(), streetViewHfov(narrow), STREETVIEW_BASE_PITCH, narrow ? 4.5 : 6);
       overlayRef.current.setState(f && f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1, false, f?.heading ?? 0);
     }).catch(() => { /* photos still work without the rider */ });
     return () => {

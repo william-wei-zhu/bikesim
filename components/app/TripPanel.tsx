@@ -28,14 +28,6 @@ export function TripPanel(p: {
   const hostileM = hostile.reduce((a, s) => a + s.lengthM, 0);
   const chosen = ok ? (p.kind === "short" ? ok.fastest : ok.calm) : null;
   const minutes = chosen ? Math.max(1, Math.round((chosen.lengthM / 1000 / SPEED_KMH) * 60)) : 0;
-  const same = ok ? ok.calm.edges.join() === ok.fastest.edges.join() : false;
-  const extra = ok ? ok.calm.lengthM - ok.fastest.lengthM : 0;
-  const hostileDiff = ok ? ok.fastest.byLts[4] - ok.calm.byLts[4] : 0;
-  const compare = !ok ? "" : same || (extra < 50 && hostileDiff < 10)
-    ? "The lowest-stress route is also the shortest."
-    : p.kind === "calm"
-      ? `${km(extra)} longer than the shortest route (dotted), with ${km(Math.max(0, hostileDiff))} less hostile riding.`
-      : `${km(extra)} shorter than the lowest-stress route (dotted), with ${km(Math.max(0, hostileDiff))} more hostile riding.`;
 
   return (
     <aside aria-label="Trip" className={cn(
@@ -143,7 +135,6 @@ export function TripPanel(p: {
               </div>
             )}
 
-            <p className="mt-3 text-[0.8rem] text-ink-2">{compare}</p>
 
           </>
         )}

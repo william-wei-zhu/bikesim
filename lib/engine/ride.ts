@@ -37,7 +37,8 @@ export class Ride {
   get total() { return this.cum[this.cum.length - 1]; }
 
   /** Base speed scales with route length so any ride takes roughly 35 to 60 seconds. */
-  private get mps() { return Math.min(this.maxMps, Math.max(60, Math.min(220, this.total / 45))) * this.speed; }
+  /** 1x pace. Halved on 2026-10-02 (the old "Slow" is the new 1x): about 18 km/h in Street View, 30 to 110 m/s in 3D. */
+  private get mps() { return Math.min(this.maxMps, Math.max(60, Math.min(220, this.total / 45))) * 0.5 * this.speed; }
 
   /** Lon/lat at a distance along the route. */
   positionAt(d: number): [number, number] { return this.pointAt(Math.max(0, Math.min(this.total, d))).p; }

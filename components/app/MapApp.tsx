@@ -153,7 +153,8 @@ export default function MapApp() {
     if (!el || !riding || view !== "street" || !GOOGLE_KEY || !line || !r) return;
     let cancelled = false;
     const f = r.current;
-    createStreetView(el, GOOGLE_KEY, (d) => r.positionAt(d), f?.distM ?? 0, f?.heading ?? 0, (has) => setNoPhotos(!has))
+    createStreetView(el, GOOGLE_KEY, (d) => r.positionAt(d), f?.distM ?? 0, f?.heading ?? 0, (has) => setNoPhotos(!has),
+      (look) => overlayRef.current?.setLook(look.yaw, look.pitch))
       .then((h) => {
         if (cancelled) { h.destroy(); return; }
         streetRef.current = h;

@@ -1,19 +1,27 @@
-// Street View ride, smoothed: two stacked StreetViewPanoramas. The hidden one preloads the photo ~STEP_M ahead,
-// then the two crossfade; between swaps the visible photo slowly zooms in, so it feels like moving forward.
-// Billing: two panorama loads per ride ("Dynamic Street View"); setPosition on an existing panorama adds no loads.
+// Street View ride, smoothed:
+// - three stacked StreetViewPanoramas in a ring: one visible, two preloading the photos ahead
+// - each new photo fades in on top of the previous one (no brightness dip)
+// - between photos the visible one "dollies" forward with a GPU CSS scale (no tile refetch, no flicker)
+// - drag to look around (yaw/pitch offset from the direction of travel), double-click to reset
+// Billing: three panorama loads per Street View session (Google bills per StreetViewPanorama created);
+// moving them with setPosition adds no loads, so cost does not depend on distance.
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 
+export interface Look { yaw: number; pitch: number }
+
 export interface StreetViewHandle {
-  /** Call every ride frame with the rider's distance along the route, position lookup and heading. */
+  /** Call every ride frame with the rider's distance along the route and travel heading. */
   follow(distM: number, heading: number): void;
   /** How far the ride may advance right now (waits at a photo boundary until the next photo has loaded). */
   maxDistance(): number;
   destroy(): void;
 }
 
-const STEP_M = 15;          // distance between photos we step through
-const FADE_MS = 450;        // crossfade length
-const ZOOM_FROM = 0.4, ZOOM_TO = 1.3; // forward "dolly" between photos
+const SLOTS = 3;
+const STEP_M = 11;          // distance between photos (Google's photos are roughly 8 to 12 m apart)
+const FADE_MS = 700;        // new photo fades in on top of the old
+const DOLLY = 0.16;         // CSS scale gained while riding from one photo to the next
+const ZOOM = 0.8;           // fixed panorama zoom (changing it refetches tiles)
 let optionsSet = false;
 
 type Pano = google.maps.StreetViewPanorama;
@@ -21,30 +29,38 @@ interface Slot { el: HTMLDivElement; pano: Pano; ready: boolean; panoId: string;
 
 export async function createStreetView(
   host: HTMLElement, apiKey: string, pointAt: (d: number) => [number, number], startDist: number, heading: number,
-  onCoverage: (hasPhotos: boolean) => void,
+  onCoverage: (hasPhotos: boolean) => void, onLook: (look: Look) => void,
 ): Promise<StreetViewHandle> {
   if (!optionsSet) { setOptions({ key: apiKey, v: "weekly" }); optionsSet = true; }
   const { StreetViewPanorama } = await importLibrary("streetView");
 
-  const make = (z: number): Slot => {
+  let z = 1;
+  const slots: Slot[] = Array.from({ length: SLOTS }, (_, i) => {
     const el = document.createElement("div");
-    el.style.cssText = `position:absolute;inset:0;transition:opacity ${FADE_MS}ms ease;opacity:${z === 0 ? 1 : 0};`;
+    // pointer-events off: we handle dragging ourselves so the rider overlay can turn with the view.
+    el.style.cssText = `position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};z-index:${i === 0 ? z : 0};` +
+      `transition:opacity ${FADE_MS}ms ease-in-out;transform-origin:50% 46%;will-change:transform,opacity;pointer-events:none;`;
     host.appendChild(el);
     const pano = new StreetViewPanorama(el, {
       disableDefaultUI: true, clickToGo: false, linksControl: false, showRoadLabels: false,
-      motionTracking: false, motionTrackingControl: false, scrollwheel: false, zoom: ZOOM_FROM,
+      motionTracking: false, motionTrackingControl: false, scrollwheel: false, zoom: ZOOM,
       pov: { heading, pitch: -3 },
     });
     return { el, pano, ready: false, panoId: "", target: 0 };
-  };
-  const slots = [make(0), make(1)];
-  let front = 0;                 // index of the visible slot
+  });
+  let front = 0;                 // visible slot
   let stepStart = startDist;     // distance where the visible photo was taken
-  let pov = heading;
+  let travel = heading;          // smoothed direction of travel
+  const look: Look = { yaw: 0, pitch: 0 };
   const listeners: google.maps.MapsEventListener[] = [];
+  const at = (k: number) => slots[(front + k) % SLOTS];
+  const applyPov = () => {
+    const pov = { heading: travel + look.yaw, pitch: -3 + look.pitch };
+    for (const s of slots) s.pano.setPov(pov);
+  };
 
   const load = (slot: Slot, d: number) => {
-    slot.ready = false; slot.target = d;
+    slot.ready = false; slot.panoId = ""; slot.target = d;
     const [x, y] = pointAt(d);
     slot.pano.setPosition({ lng: x, lat: y });
   };
@@ -52,47 +68,76 @@ export async function createStreetView(
     listeners.push(slot.pano.addListener("status_changed", () => {
       const ok = slot.pano.getStatus() === "OK";
       if (slot === slots[front]) onCoverage(ok);
-      // A short settle delay lets the first tiles paint before we fade to this photo.
-      if (ok) window.setTimeout(() => { slot.ready = true; slot.panoId = slot.pano.getPano(); }, 180);
+      // Let the first tiles paint before this photo is allowed to fade in.
+      if (ok) window.setTimeout(() => { slot.ready = true; slot.panoId = slot.pano.getPano(); }, 300);
       else slot.ready = true; // no photo here: don't hold the ride
     }));
   }
-  load(slots[0], startDist);
-  load(slots[1], startDist + STEP_M);
+  slots.forEach((s, i) => load(s, startDist + i * STEP_M));
 
-  const swap = () => {
-    const back = slots[1 - front];
-    // Same photo as the visible one (photos are sparse here): skip ahead instead of fading to a duplicate.
-    if (back.panoId && back.panoId === slots[front].panoId) { load(back, back.target + STEP_M); return; }
-    back.pano.setZoom(ZOOM_FROM);
-    back.el.style.opacity = "1";
-    slots[front].el.style.opacity = "0";
-    stepStart = back.target;
-    front = 1 - front;
-    onCoverage(slots[front].pano.getStatus() === "OK");
-    const hidden = slots[1 - front];
-    window.setTimeout(() => load(hidden, stepStart + STEP_M), FADE_MS);
+  const advance = () => {
+    const old = at(0), next = at(1);
+    // Where photos are sparse the next slot can hold the same photo: swap instantly at the same scale
+    // (nothing visible changes) and let the dolly keep going.
+    const duplicate = !!next.panoId && next.panoId === old.panoId;
+    if (duplicate) {
+      next.el.style.transition = "none";
+      next.el.style.transform = old.el.style.transform;
+    } else {
+      next.el.style.transform = "scale(1)";
+      stepStart = next.target;
+    }
+    next.el.style.zIndex = String(++z);
+    next.el.style.opacity = "1";
+    front = (front + 1) % SLOTS;
+    onCoverage(next.pano.getStatus() === "OK");
+    // After the fade, recycle the old slot to preload the photo after the last one in the ring.
+    window.setTimeout(() => {
+      next.el.style.transition = `opacity ${FADE_MS}ms ease-in-out`;
+      old.el.style.opacity = "0"; old.el.style.zIndex = "0";
+      load(old, at(SLOTS - 2).target + STEP_M);
+    }, duplicate ? 0 : FADE_MS + 50);
   };
+
+  // Drag to look around; the rider overlay turns with it via onLook.
+  let drag: { x: number; y: number; id: number } | null = null;
+  const down = (e: PointerEvent) => { drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; host.style.cursor = "grabbing"; try { host.setPointerCapture(e.pointerId); } catch { /* ok */ } };
+  const move = (e: PointerEvent) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    look.yaw = Math.max(-150, Math.min(150, look.yaw - (e.clientX - drag.x) * 0.25));
+    look.pitch = Math.max(-25, Math.min(25, look.pitch + (e.clientY - drag.y) * 0.15));
+    drag.x = e.clientX; drag.y = e.clientY;
+    applyPov(); // also works while the ride is paused
+    onLook({ ...look });
+  };
+  const up = (e: PointerEvent) => { if (drag && e.pointerId === drag.id) { drag = null; host.style.cursor = "grab"; } };
+  const reset = () => { look.yaw = 0; look.pitch = 0; applyPov(); onLook({ ...look }); };
+  host.style.cursor = "grab";
+  host.style.touchAction = "none";
+  host.addEventListener("pointerdown", down); host.addEventListener("pointermove", move);
+  host.addEventListener("pointerup", up); host.addEventListener("pointercancel", up);
+  host.addEventListener("dblclick", reset);
 
   return {
     follow(distM, h) {
-      const back = slots[1 - front];
-      if (back.ready && distM >= back.target) swap();
-      // Smooth turn toward the direction of travel; both slots share the view direction.
-      const d = ((h - pov + 540) % 360) - 180;
-      pov += d * 0.1;
+      const next = at(1);
+      if (next.ready && distM >= next.target) advance();
+      const d = ((h - travel + 540) % 360) - 180;
+      travel += d * 0.08;
+      applyPov();
       const progress = Math.min(1, Math.max(0, (distM - stepStart) / STEP_M));
-      const vis = slots[front].pano;
-      vis.setPov({ heading: pov, pitch: -3 });
-      vis.setZoom(ZOOM_FROM + (ZOOM_TO - ZOOM_FROM) * progress);
-      slots[1 - front].pano.setPov({ heading: pov, pitch: -3 });
+      at(0).el.style.transform = `scale(${1 + DOLLY * progress})`;
     },
     maxDistance() {
-      const back = slots[1 - front];
-      return back.ready ? Infinity : back.target + STEP_M * 0.25;
+      const next = at(1);
+      return next.ready ? Infinity : next.target + STEP_M * 0.3;
     },
     destroy() {
       listeners.forEach((l) => l.remove());
+      host.removeEventListener("pointerdown", down); host.removeEventListener("pointermove", move);
+      host.removeEventListener("pointerup", up); host.removeEventListener("pointercancel", up);
+      host.removeEventListener("dblclick", reset);
+      host.style.cursor = ""; host.style.touchAction = "";
       for (const s of slots) { s.pano.setVisible(false); s.el.remove(); }
     },
   };

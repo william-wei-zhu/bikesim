@@ -131,7 +131,7 @@ function createBikeModel() {
     ringMat.opacity = 0.4 + 0.2 * Math.sin(pulse * 3);
   }
 
-  return { scene, update };
+  return { scene, update, root };
 }
 
 export function createBikeLayer(map: MLMap): BikeLayer {
@@ -180,12 +180,14 @@ export function createBikeLayer(map: MLMap): BikeLayer {
 
 export interface BikeOverlay {
   setState(lts: number, moving: boolean, headingDeg: number): void;
+  /** Turn the rider as the viewer looks around: yaw > 0 = looking right (we see the rider's left side). */
+  setLook(yawDeg: number, pitchDeg: number): void;
   destroy(): void;
 }
 
 /** The same rider drawn over Street View on its own transparent canvas, seen from behind like a racing game. */
 export function createBikeOverlay(host: HTMLElement): BikeOverlay {
-  const { scene, update } = createBikeModel();
+  const { scene, update, root } = createBikeModel();
   const canvas = document.createElement("canvas");
   canvas.setAttribute("aria-hidden", "true");
   canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;";
@@ -193,10 +195,13 @@ export function createBikeOverlay(host: HTMLElement): BikeOverlay {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-  camera.position.set(0, 2.5, 7.4);    // behind and above the rider
-  camera.lookAt(0, 0.6, -8);            // looking down the road, rider small in the lower third
+  const aim = (pitchDeg: number) => {
+    camera.position.set(0, 2.5, 7.4);   // behind and above the rider
+    camera.lookAt(0, 0.6 + pitchDeg * 0.12, -8); // looking down the road, rider small in the lower third
+  };
+  aim(0);
   const state = { lts: 1, moving: false, heading: 0, prevHeading: 0, at: 0 };
-  let last = performance.now(), raf = 0;
+  let last = performance.now(), raf = 0, dirty = true, settle = 0;
 
   const resize = () => {
     const w = host.clientWidth, h = host.clientHeight;
@@ -206,24 +211,33 @@ export function createBikeOverlay(host: HTMLElement): BikeOverlay {
     // Keep the rider a similar size on phones (portrait) and desktops (landscape).
     camera.fov = w / h < 1 ? 50 : 36;
     camera.updateProjectionMatrix();
+    dirty = true;
   };
   const ro = new ResizeObserver(resize);
   ro.observe(host);
   resize();
 
+  // Draw only while riding, briefly after (so the lean eases out), or after a look change; idle costs nothing.
   const loop = () => {
     const now = performance.now();
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const moving = state.moving && now - state.at < 250;
-    update(dt, moving, state.lts, ((state.heading - state.prevHeading + 540) % 360) - 180);
-    state.prevHeading = state.heading;
-    renderer.render(scene, camera);
+    if (moving) settle = 30;
+    if (moving || settle > 0 || dirty) {
+      update(dt, moving, state.lts, ((state.heading - state.prevHeading + 540) % 360) - 180);
+      state.prevHeading = state.heading;
+      renderer.render(scene, camera);
+      dirty = false;
+      if (!moving) settle--;
+    }
     raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
+  if (process.env.NODE_ENV !== "production") (window as unknown as { __rsRider: THREE.Object3D }).__rsRider = root;
 
   return {
     setState(lts, moving, headingDeg) { state.lts = lts; state.moving = moving; state.heading = headingDeg; state.at = performance.now(); },
+    setLook(yawDeg, pitchDeg) { root.rotation.y = (yawDeg * Math.PI) / 180; aim(pitchDeg); dirty = true; },
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); renderer.dispose(); canvas.remove(); },
   };
 }

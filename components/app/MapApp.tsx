@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowDown, ArrowLeft } from "lucide-react";
 import type * as maplibregl from "maplibre-gl";
-import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
-import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
+import { loadNet, loadPois, loadBlocks, distM, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi, type BlockInfo } from "@/lib/engine/net";
+import { routePair, routeLine, stretches as toStretches, explainStretch, type Stretch, type StretchWhy } from "@/lib/engine/graph";
 import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, DC_VIEW } from "@/lib/engine/map";
 import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
@@ -16,6 +16,7 @@ import { Header } from "./Header";
 import { TripPanel } from "./TripPanel";
 import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
+import { FinishCard } from "./FinishCard";
 import { readDefaultView, readRider } from "@/lib/prefs";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
@@ -60,6 +61,10 @@ export default function MapApp() {
   const [ridePlaying, setRidePlaying] = useState(false);
   const [riding, setRiding] = useState(false);
   const [noPhotos, setNoPhotos] = useState(false);
+  // Set when a ride reaches the end: shows the finish card over the whole route.
+  const [finished, setFinished] = useState<RouteKind | null>(null);
+  // Title card shown while the camera flies down to street level.
+  const [intro, setIntro] = useState<{ street: string; km: string } | null>(null);
   const rideRef = useRef<Ride | null>(null);
   const streetRef = useRef<StreetViewHandle | null>(null);
   const bikeRef = useRef<BikeLayer | null>(null);
@@ -191,20 +196,37 @@ export default function MapApp() {
     if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: DC_VIEW.pitch, bearing: 0, duration: 1000 });
   }, [from, to]);
 
-  const startRide = useCallback(() => {
+  // Reached the end: back to the whole route (the camera pulls out), then the finish card.
+  const endRef = useRef<() => void>(() => {});
+  useEffect(() => { endRef.current = () => {
+    stopRide(); setFinished(kind);
     const map = mapRef.current;
-    if (!map || !line) return;
+    if (map && line) {
+      const xs = line.coords.map((c) => c[0]), ys = line.coords.map((c) => c[1]);
+      const narrow = window.innerWidth < 768;
+      map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], {
+        padding: narrow ? { top: 30, bottom: window.innerHeight * 0.66, left: 30, right: 30 } : { top: 60, bottom: 60, left: 480, right: 60 },
+        pitch: 45, bearing: 0, duration: 1600, maxZoom: 16 });
+    }
+  }; });
+
+  // ln: ride a specific route line (the finish card switches routes and starts at once).
+  const startRide = useCallback((ln?: typeof line) => {
+    setFinished(null);
+    const map = mapRef.current;
+    const line_ = ln ?? line;
+    if (!map || !line_) return;
     rideRef.current?.stop();
     // Each ride starts in the view chosen in Settings (switchable during the ride).
     const startView: View = GOOGLE_KEY ? readDefaultView() : "model";
     setView(startView);
-    const r = new Ride(map, line.coords, line.segEdge, (f) => {
+    const r = new Ride(map, line_.coords, line_.segEdge, (f) => {
       setRideFrame(f);
       streetRef.current?.follow(f.distM, f.heading);
       const lts = f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1;
       bikeRef.current?.setPose(f.pos, f.heading, lts, true);
       overlayRef.current?.setState(lts, true, f.heading);
-    }, () => setRidePlaying(false));
+    }, () => { setRidePlaying(false); window.setTimeout(() => endRef.current(), 600); });
     r.baseMps = startView === "street" ? STREET_MPS : MODEL_MPS;
     rideRef.current = r;
     r.enableOrbit(); // drag to look around the rider in the 3D view
@@ -215,11 +237,32 @@ export default function MapApp() {
       const bike = createBikeLayer(map, readRider());
       map.addLayer(bike);
       bikeRef.current = bike;
-      bike.setPose(line.coords[0], 0, 1, false);
+      bike.setPose(line_.coords[0], 0, 1, false);
     }).catch(() => { /* the ride still works without the bike model */ });
-    map.flyTo({ center: line.coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
+    const first = line_.segEdge.find((e) => e >= 0) ?? -1;
+    const total = line_.coords.reduce((m, c, i) => (i ? m + distM(line_.coords[i - 1][0], line_.coords[i - 1][1], c[0], c[1]) : 0), 0);
+    setIntro({ street: first >= 0 ? edgeName(net!, first) : "your route", km: (total / 1000).toFixed(1) });
+    window.setTimeout(() => setIntro(null), 1900);
+    map.flyTo({ center: line_.coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
     window.setTimeout(() => { if (rideRef.current === r) r.play(); }, 1550);
   }, [line, net]);
+
+  const shareRide = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) { await navigator.share({ title: "RideSim DC", text: "Feel this DC bike trip before you ride it", url }); return; }
+      await navigator.clipboard.writeText(url);
+      toast("Link copied. Anyone who opens it gets this exact trip.");
+    } catch { /* share sheet dismissed */ }
+  }, [toast]);
+
+  // "Why is this stretch hostile?": RideScore DC block facts, loaded on the first tap.
+  const blocksRef = useRef<Promise<BlockInfo[]> | null>(null);
+  const explain = useCallback(async (s: Stretch): Promise<StretchWhy> => {
+    if (!net) throw new Error("no network");
+    blocksRef.current ??= loadBlocks().catch((e) => { blocksRef.current = null; throw e; });
+    return explainStretch(net, s, await blocksRef.current);
+  }, [net]);
 
   const flyToStretch = useCallback((s: Stretch) => {
     if (!net) return;
@@ -230,7 +273,7 @@ export default function MapApp() {
 
   // Logo click: back to the start screen (no trip, north-up DC view), even when already on "/".
   const goHome = useCallback(() => {
-    stopRide();
+    stopRide(); setFinished(null);
     setFrom(null); setTo(null); setPick(null); setKind("short");
     const map = mapRef.current;
     if (map) {
@@ -290,9 +333,9 @@ export default function MapApp() {
         <div ref={streetEl} className={riding && view === "street" ? "absolute inset-0 z-[5]" : "hidden"} aria-label="Street View along the route" />
         <div ref={overlayEl} className={riding && view === "street" ? "pointer-events-none absolute inset-0 z-[6]" : "hidden"} />
         {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
-        {net && !riding && (
+        {net && !riding && !finished && (
           <TripPanel pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
-            setPick={setPick} awaiting={awaiting} onRide={startRide} onFlyTo={flyToStretch} />
+            setPick={setPick} awaiting={awaiting} onRide={() => startRide()} onFlyTo={flyToStretch} onShare={shareRide} explain={explain} />
         )}
         {net && riding && rideFrame && (
           <RideHud net={net} frame={rideFrame} playing={ridePlaying} view={view} views={VIEWS} onView={setView} noPhotos={noPhotos}
@@ -301,7 +344,12 @@ export default function MapApp() {
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
             onExit={stopRide} />
         )}
-        {net && !awaiting && ok && !riding && (
+        {net && !riding && finished && ok && (
+          <FinishCard kind={finished} ridden={finished === "short" ? ok.fastest : ok.calm} other={finished === "short" ? ok.calm : ok.fastest}
+            onRideOther={() => { const k: RouteKind = finished === "short" ? "calm" : "short"; setKind(k); startRide(routeLine(net, k === "short" ? ok.fastest : ok.calm)); }}
+            onRideAgain={() => startRide()} onShare={shareRide} onClose={() => setFinished(null)} />
+        )}
+        {net && !awaiting && ok && !riding && !finished && (
           // Step 3: the route is ready; point at the Start the ride button. Tapping it reopens the trip panel
           // (on phones the panel may be collapsed) and brings the button into view.
           <button type="button" role="status" onClick={() => window.dispatchEvent(new Event("rs-show-trip"))}
@@ -322,6 +370,15 @@ export default function MapApp() {
             </span>
             <span className="md:hidden">Tap the map to set your {awaiting === "from" ? "start" : "end"}</span>
             <span className="hidden md:inline">Click the map to set your {awaiting === "from" ? "start" : "end"}</span>
+          </div>
+        )}
+        {intro && (
+          <div role="status" className="pointer-events-none absolute inset-0 z-30 grid place-items-center p-6">
+            <div className="rounded-card bg-primary px-7 py-5 text-center text-primary-ink shadow-panel animate-in fade-in zoom-in-95 duration-500">
+              <p className="eyebrow !text-primary-ink/70">Starting on</p>
+              <p className="mt-1 font-display text-[1.6rem] font-bold leading-tight">{intro.street}</p>
+              <p className="mt-1 font-mono text-[0.85rem] opacity-80">{intro.km} km ahead</p>
+            </div>
           </div>
         )}
         {toastMsg && (

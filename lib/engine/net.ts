@@ -78,6 +78,25 @@ export async function loadPois(base = "/data"): Promise<Poi[]> {
   return getJson<Poi[]>(`${base}/pois.json`);
 }
 
+/** RideScore DC facts for one DDOT block (from blocks.json, indexed by Net.eblock). */
+export interface BlockInfo {
+  speedLimit: number | null; speedEstimated: boolean; lanes: number | null; bikeFacility: string;
+  roadClass: string | null; crashes: number; serious: number; fatal: number;
+}
+
+/** Loaded on demand (first "why" tap) so it never slows the first page load. */
+export async function loadBlocks(base = "/data"): Promise<BlockInfo[]> {
+  const raw = await getJson<{ cols: string[]; rows: unknown[][] }>(`${base}/blocks.json`);
+  const c = (name: string) => raw.cols.indexOf(name);
+  const [sp, sf, ln, bf, fn, cr, se, fa] = ["speed_limit", "speed_filled", "num_lanes", "bike_facility_type", "function",
+    "crash_count_5yr", "serious_injury_count_5yr", "fatal_count_5yr"].map(c);
+  return raw.rows.map((r) => ({
+    speedLimit: (r[sp] as number | null) ?? null, speedEstimated: !!r[sf], lanes: (r[ln] as number | null) ?? null,
+    bikeFacility: String(r[bf] ?? "No bike lane"), roadClass: (r[fn] as string | null) ?? null,
+    crashes: Number(r[cr] ?? 0), serious: Number(r[se] ?? 0), fatal: Number(r[fa] ?? 0),
+  }));
+}
+
 function buildGrid(net: Net) {
   const g = net.grid;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;

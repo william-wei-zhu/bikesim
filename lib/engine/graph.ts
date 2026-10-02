@@ -1,5 +1,5 @@
 // Routing over the street network. Pure functions over Net.
-import type { Net } from "./net";
+import type { Net, BlockInfo } from "./net";
 
 /** An edge is comfortable for the rider if its LTS is within their threshold. */
 export function rideable(net: Net, e: number, threshold: number) {
@@ -117,4 +117,31 @@ export function stretches(net: Net, r: Route, nameOf: (e: number) => string): St
     at += L;
   }
   return out;
+}
+
+export interface StretchWhy { reasons: string[]; crashes: number; serious: number; fatal: number; source: "ridescore" | "estimate" }
+
+/** Plain-language reasons a stretch is stressful, from RideScore DC's block data (worst block wins). */
+export function explainStretch(net: Net, s: Stretch, blocks: BlockInfo[]): StretchWhy {
+  const seen = new Set<number>();
+  let speed = 0, speedEst = false, lanes = 0, crashes = 0, serious = 0, fatal = 0;
+  let facility = "", roadClass = "";
+  for (const e of s.edges) {
+    const b = net.eblock[e];
+    if (b < 0 || seen.has(b) || !blocks[b]) continue;
+    seen.add(b);
+    const x = blocks[b];
+    if ((x.speedLimit ?? 0) > speed) { speed = x.speedLimit ?? 0; speedEst = x.speedEstimated; }
+    lanes = Math.max(lanes, x.lanes ?? 0);
+    if (!facility || x.bikeFacility === "No bike lane") facility = x.bikeFacility;
+    if (!roadClass && x.roadClass) roadClass = x.roadClass;
+    crashes += x.crashes; serious += x.serious; fatal += x.fatal;
+  }
+  if (!seen.size) return { reasons: ["Not in DDOT's street records, so stress is estimated from the road type"], crashes: 0, serious: 0, fatal: 0, source: "estimate" };
+  const reasons: string[] = [];
+  if (speed) reasons.push(`${speed} mph speed limit${speedEst ? " (estimated)" : ""}`);
+  if (lanes) reasons.push(`${lanes} travel lane${lanes > 1 ? "s" : ""}`);
+  if (facility) reasons.push(facility === "No bike lane" ? "No bike lane" : facility);
+  if (roadClass && /arterial|freeway|interstate/i.test(roadClass)) reasons.push(roadClass.replace("Principal/Primary", "Principal"));
+  return { reasons, crashes, serious, fatal, source: "ridescore" };
 }

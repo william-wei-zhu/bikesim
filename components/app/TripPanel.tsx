@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronRight, ChevronUp, MapPin, Share2 } from "lucide-react";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
-import type { Stretch } from "@/lib/engine/graph";
+import type { Stretch, StretchWhy } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
 import { Btn, Card, Segmented, km } from "@/components/ui";
 import type { Routes, RouteKind } from "./types";
@@ -19,9 +19,18 @@ export function TripPanel(p: {
   pois: Poi[]; routes: Routes; kind: RouteKind; setKind: (k: RouteKind) => void; stretches: Stretch[];
   from: Place | null; to: Place | null; setFrom: (x: Place | null) => void; setTo: (x: Place | null) => void;
   setPick: (k: "from" | "to") => void; awaiting: "from" | "to" | null;
-  onRide: () => void; onFlyTo: (s: Stretch) => void;
+  onRide: () => void; onFlyTo: (s: Stretch) => void; onShare: () => void; explain: (s: Stretch) => Promise<StretchWhy>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  // Which hostile stretch is open, and its RideScore DC facts once loaded.
+  const [open, setOpen] = useState<number | null>(null);
+  const [why, setWhy] = useState<Record<number, StretchWhy | "error">>({});
+  const toggleWhy = (s: Stretch) => {
+    p.onFlyTo(s);
+    if (open === s.startM) { setOpen(null); return; }
+    setOpen(s.startM);
+    if (!why[s.startM]) p.explain(s).then((w) => setWhy((m) => ({ ...m, [s.startM]: w }))).catch(() => setWhy((m) => ({ ...m, [s.startM]: "error" })));
+  };
   // The "3 · Ride" prompt on the map reopens a collapsed panel and scrolls Start the ride into view.
   useEffect(() => {
     const show = () => {
@@ -68,9 +77,16 @@ export function TripPanel(p: {
             {!p.to && <PickBtn on={() => p.setPick("to")} />}
           </div>
           {p.from && p.to && (
-            <Btn size="sm" variant="quiet" onClick={() => { const f = p.from; p.setFrom(p.to); p.setTo(f); }}>
-              <ArrowUpDown className="size-3.5" /> Swap
-            </Btn>
+            <div className="flex gap-2">
+              <Btn size="sm" variant="quiet" onClick={() => { const f = p.from; p.setFrom(p.to); p.setTo(f); }}>
+                <ArrowUpDown className="size-3.5" /> Swap
+              </Btn>
+              {ok && (
+                <Btn size="sm" variant="quiet" onClick={p.onShare}>
+                  <Share2 className="size-3.5" /> Share
+                </Btn>
+              )}
+            </div>
           )}
         </div>
 
@@ -133,16 +149,45 @@ export function TripPanel(p: {
             {hostile.length > 0 && (
               <div className="mt-4">
                 <p className="eyebrow mb-2">{p.kind === "calm" ? "Hostile stretches you can't avoid" : "Hostile stretches on this route"}</p>
-                <ul className="space-y-1.5">
-                  {hostile.slice(0, 6).map((s) => (
-                    <li key={s.startM}>
-                      <button onClick={() => p.onFlyTo(s)} className="flex w-full items-center gap-2 rounded-xl border border-line px-3 py-2 text-left hover:border-ink cursor-pointer">
-                        <span className="size-3 shrink-0 rounded-full bg-lts4" aria-hidden />
-                        <span className="flex-1 truncate text-[0.82rem] font-semibold underline underline-offset-2">{s.name}</span>
-                        <span className="font-mono text-[0.75rem]">{km(s.lengthM)}</span>
-                      </button>
-                    </li>
-                  ))}
+                <ul className="space-y-2">
+                  {hostile.slice(0, 6).map((s) => {
+                    const isOpen = open === s.startM, w = why[s.startM];
+                    return (
+                      <li key={s.startM} className={cn("rounded-2xl border bg-paper transition-colors", isOpen ? "border-ink" : "border-line")}>
+                        <button onClick={() => toggleWhy(s)} aria-expanded={isOpen}
+                          className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-2 text-left hover:bg-surface">
+                          <span className="size-3 shrink-0 rounded-full bg-lts4" aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[0.88rem] font-semibold">{s.name}</span>
+                            <span className="block text-[0.78rem] text-ink-2">{km(s.lengthM)} · {isOpen ? "Hide details" : "Why is it hostile?"}</span>
+                          </span>
+                          <ChevronRight className={cn("size-4 shrink-0 transition-transform duration-200", isOpen && "rotate-90")} aria-hidden />
+                        </button>
+                        {isOpen && (
+                          <div className="px-3.5 pb-3 animate-in fade-in duration-200">
+                            {!w && <p className="text-[0.82rem] text-ink-2">Loading RideScore DC street data…</p>}
+                            {w === "error" && <p className="text-[0.82rem] text-ink-2">Could not load the street details. Try again.</p>}
+                            {w && w !== "error" && (
+                              <>
+                                <ul className="flex flex-wrap gap-1.5">
+                                  {w.reasons.map((r) => (
+                                    <li key={r} className="rounded-full bg-surface px-2.5 py-1 text-[0.8rem] font-semibold">{r}</li>
+                                  ))}
+                                </ul>
+                                {w.source === "ridescore" && (
+                                  <p className="mt-2 text-[0.8rem] text-ink-2">
+                                    {w.crashes > 0
+                                      ? <>{w.crashes} reported crash{w.crashes > 1 ? "es" : ""} on these blocks in 5 years{w.serious + w.fatal > 0 ? `, ${w.serious + w.fatal} serious or fatal` : ""}.</>
+                                      : "No reported crashes on these blocks in 5 years."}
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

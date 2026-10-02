@@ -131,6 +131,12 @@ function createBikeModel() {
     ringMat.opacity = 0.4 + 0.2 * Math.sin(pulse * 3);
   }
 
+  // Pivot on the rider's visual middle (body and arms sit forward of the bottom bracket), so turning the
+  // rider in place never slides it sideways on screen.
+  rebuildLegs();
+  const centre = new THREE.Box3().setFromObject(lean).getCenter(new THREE.Vector3());
+  lean.position.set(-centre.x, 0, -centre.z);
+
   return { scene, update, root };
 }
 
@@ -233,7 +239,7 @@ export function createBikeOverlay(host: HTMLElement): BikeOverlay {
     raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
-  if (process.env.NODE_ENV !== "production") (window as unknown as { __rsRider: THREE.Object3D }).__rsRider = root;
+  if (process.env.NODE_ENV !== "production") Object.assign(window, { __rsRider: root, __rsRiderCam: camera });
 
   return {
     setState(lts, moving, headingDeg) { state.lts = lts; state.moving = moving; state.heading = headingDeg; state.at = performance.now(); },

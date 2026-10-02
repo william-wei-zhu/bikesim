@@ -21,7 +21,8 @@ const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
   ? [{ value: "street", label: "Street View" }, { value: "model", label: "3D model" }]
   : [{ value: "model", label: "3D model" }];
-const STREET_MAX_MPS = 10; // Street View pace at 1x (about 36 km/h, twice a typical ride) so photos can keep up
+const STREET_MPS = 5;   // Street View pace at 1x (about 18 km/h, a real riding pace) so photos can keep up
+const MODEL_MPS = 15;   // 3D model pace at 1x
 
 function readUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -161,7 +162,7 @@ export default function MapApp() {
         r.limit = () => h.maxDistance();
       })
       .catch(() => { toast("Street View could not load. Showing the 3D model."); setView("model"); });
-    r.maxMps = STREET_MAX_MPS;
+    r.baseMps = STREET_MPS;
     // The same 3D rider, drawn over the photos from behind (three.js loads with the first ride).
     const ov = overlayEl.current;
     if (ov) import("@/lib/engine/bike3d").then(({ createBikeOverlay }) => {
@@ -173,7 +174,7 @@ export default function MapApp() {
       cancelled = true;
       overlayRef.current?.destroy(); overlayRef.current = null;
       streetRef.current?.destroy(); streetRef.current = null;
-      r.limit = null; r.maxMps = Infinity;
+      r.limit = null; r.baseMps = MODEL_MPS;
       setNoPhotos(false);
     };
   }, [riding, view, line, toast, net]);
@@ -198,7 +199,7 @@ export default function MapApp() {
       bikeRef.current?.setPose(f.pos, f.heading, lts, true);
       overlayRef.current?.setState(lts, true, f.heading);
     }, () => setRidePlaying(false));
-    if (view === "street") r.maxMps = STREET_MAX_MPS;
+    r.baseMps = view === "street" ? STREET_MPS : MODEL_MPS;
     rideRef.current = r;
     r.enableOrbit(); // drag to look around the rider in the 3D view
     setRiding(true); setRidePlaying(true);

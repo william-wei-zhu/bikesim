@@ -60,6 +60,7 @@
 - 2026-10-02: Design pass. Route gets a soft shadow layer (`rs-route-glow`) and a theme-aware outline (white on light, navy on dark; the dotted alternative turns light blue in dark mode); other streets fade to 30% when a route is shown. Small text raised to a 0.76 to 0.8rem floor (eyebrow 0.72rem semibold mono). The route toggle is two-line (name, then distance in mono) so "Lowest stress" never truncates on phones; `Segmented` options take an optional `sub`.
 - 2026-10-02: `/data/*` sends `Access-Control-Allow-Origin: *` (next.config.ts) so RideScore DC's "Ride it" page can load the street network from ridesimdc.com.
 - 2026-10-02: Maps daily quota (`billable_default`, project ridesimdc) raised from 300 to 1500 for the Oct 3 hackathon demo. **Lower it back to 300 after Oct 3.**
+- 2026-10-02: In Street View rides the photos and rider overlay stay transparent while the intro card shows, so the map's fly-down is visible (photos load meanwhile), then fade in over 500 ms. The intro card sits in the upper part of the screen so it never covers the rider.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff

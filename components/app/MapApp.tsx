@@ -330,8 +330,9 @@ export default function MapApp() {
       <Header />
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label="3D map of Washington, DC streets colored by bike stress" role="region" /></div>
-        <div ref={streetEl} className={riding && view === "street" ? "absolute inset-0 z-[5]" : "hidden"} aria-label="Street View along the route" />
-        <div ref={overlayEl} className={riding && view === "street" ? "pointer-events-none absolute inset-0 z-[6]" : "hidden"} />
+        {/* During the intro card the map's fly-down shows; the photos fade in once it ends (they load meanwhile). */}
+        <div ref={streetEl} className={riding && view === "street" ? `absolute inset-0 z-[5] transition-opacity duration-500 ${intro ? "opacity-0" : "opacity-100"}` : "hidden"} aria-label="Street View along the route" />
+        <div ref={overlayEl} className={riding && view === "street" ? `pointer-events-none absolute inset-0 z-[6] transition-opacity duration-500 ${intro ? "opacity-0" : "opacity-100"}` : "hidden"} />
         {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
         {net && !riding && !finished && (
           <TripPanel pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
@@ -373,7 +374,7 @@ export default function MapApp() {
           </div>
         )}
         {intro && (
-          <div role="status" className="pointer-events-none absolute inset-0 z-30 grid place-items-center p-6">
+          <div role="status" className="pointer-events-none absolute inset-x-0 top-[12%] z-30 flex justify-center p-6">
             <div className="rounded-card bg-primary px-7 py-5 text-center text-primary-ink shadow-panel animate-in fade-in zoom-in-95 duration-500">
               <p className="eyebrow !text-primary-ink/70">Starting on</p>
               <p className="mt-1 font-display text-[1.6rem] font-bold leading-tight">{intro.street}</p>

@@ -53,7 +53,7 @@ export function TripPanel(p: {
         {!ok && <h2 className="text-[1.5rem] font-bold">Feel it before you ride it.</h2>}
         {!ok && (
           <p className="mt-2 text-[0.85rem] text-ink-2">
-            Pick any trip in DC. See how stressful every block is, then ride it in 3D or through real street photos.
+            Pick a DC trip, see its stress, then ride it virtually.
           </p>
         )}
 

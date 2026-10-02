@@ -4,9 +4,8 @@ import { useTheme } from "next-themes";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
-import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setVisible, setData, riseWalls, DC_VIEW } from "@/lib/engine/map";
-import { lineFC, pointsFC, EMPTY_FC, wallFootprints } from "@/lib/engine/geom";
-import { enablePhotoreal, type PhotorealHandle } from "@/lib/engine/photoreal";
+import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, riseWalls, DC_VIEW } from "@/lib/engine/map";
+import { lineFC, pointsFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, type StreetViewHandle } from "@/lib/engine/streetview";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
@@ -15,14 +14,12 @@ import { Header } from "./Header";
 import { TripPanel } from "./TripPanel";
 import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
-import { PhotorealCredits } from "./PhotorealCredits";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
-  ? [{ value: "photoreal", label: "Photoreal" }, { value: "street", label: "Street View" }, { value: "model", label: "3D model" }]
+  ? [{ value: "model", label: "3D model" }, { value: "street", label: "Street View" }]
   : [{ value: "model", label: "3D model" }];
 const STREET_MAX_MPS = 22; // Street View hops photo to photo; faster than this and it can't keep up
-const MAP_LAYERS = ["rs-walls", "rs-buildings", "rs-streets", "rs-route", "rs-route-casing", "rs-route-fast", "rs-break", "rs-rider", "rs-ends"];
 
 function readUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -56,10 +53,8 @@ export default function MapApp() {
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
   const [ridePlaying, setRidePlaying] = useState(false);
   const [riding, setRiding] = useState(false);
-  const [credits, setCredits] = useState("");
   const [noPhotos, setNoPhotos] = useState(false);
   const rideRef = useRef<Ride | null>(null);
-  const photoRef = useRef<PhotorealHandle | null>(null);
   const streetRef = useRef<StreetViewHandle | null>(null);
   const wallScale = useRef(0);
   const layersAdded = useRef(false);
@@ -142,30 +137,6 @@ export default function MapApp() {
   }, [from, to]);
 
   // ---------- ride views ----------
-  const walls = useMemo(() => (net ? wallFootprints(net) : null), [net]);
-
-  // Photoreal: Google 3D tiles only while riding in that view (one billed session per load).
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !riding || view !== "photoreal" || !GOOGLE_KEY || !net || !walls) return;
-    let cancelled = false;
-    MAP_LAYERS.forEach((id) => setVisible(map, id, false));
-    enablePhotoreal(map, GOOGLE_KEY, setCredits, (msg) => { toast(msg); setView("model"); })
-      .then((h) => {
-        if (cancelled) { h.destroy(); return; }
-        photoRef.current = h;
-        h.setRoute(line?.coords ?? null);
-        h.setWalls({ type: "FeatureCollection", features: walls.features.filter((f) => net.elts[Number(f.id)] >= 3) }); // stressful and hostile only
-      })
-      .catch(() => { toast("The photoreal view could not load. Showing the 3D model."); setView("model"); });
-    return () => {
-      cancelled = true;
-      photoRef.current?.destroy(); photoRef.current = null;
-      setCredits("");
-      MAP_LAYERS.forEach((id) => setVisible(map, id, true));
-    };
-  }, [riding, view, net, walls, line, toast]);
-
   // Street View: real photos, one panorama load per ride, moved along with the rider.
   useEffect(() => {
     const el = streetEl.current;
@@ -197,7 +168,6 @@ export default function MapApp() {
     rideRef.current?.stop();
     const r = new Ride(map, line.coords, line.segEdge, (f) => {
       setRideFrame(f);
-      photoRef.current?.setRider(f.pos);
       streetRef.current?.follow(f.pos, f.heading);
     }, () => setRidePlaying(false));
     if (view === "street") r.maxMps = STREET_MAX_MPS;
@@ -249,7 +219,6 @@ export default function MapApp() {
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
             onExit={stopRide} />
         )}
-        {riding && view === "photoreal" && <PhotorealCredits credits={credits} />}
         {pick && (
           <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.85rem] font-semibold text-primary-ink shadow-panel">
             {pick === "from" ? "Click the map to set your start" : "Click the map to set your destination"}

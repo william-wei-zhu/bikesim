@@ -49,7 +49,7 @@ export function TripPanel(p: {
         <h1 className="text-[1.5rem] font-bold">{headline}</h1>
         {!ok && (
           <p className="mt-2 text-[0.85rem] text-ink-2">
-            Pick any trip in DC. See how stressful every block is, then ride it in 3D, in photoreal, or through real street photos.
+            Pick any trip in DC. See how stressful every block is, then ride it in 3D or through real street photos.
           </p>
         )}
 
@@ -93,7 +93,12 @@ export function TripPanel(p: {
 
         {ok && (
           <>
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4">
+              <p className="eyebrow mb-2">Ride it in</p>
+              <Segmented<View> label="Ride view" value={p.view} onChange={p.setView} options={p.views} />
+            </div>
+            <Btn variant="primary" className="mt-3 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
+            <div className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4">
               <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(ok.calm.lengthM)}</p><p className="eyebrow mt-1">Distance</p></div>
               <div><p className="font-display text-[1.5rem] font-bold leading-tight">{minutes} min</p><p className="eyebrow mt-1">At {SPEED_KMH} km/h</p></div>
               <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(hostileM)}</p><p className="eyebrow mt-1">Hostile</p></div>
@@ -137,11 +142,6 @@ export function TripPanel(p: {
               {extra < 50 ? "This is also the shortest route." : `Avoids hostile streets where it can, ${km(extra)} longer than the shortest route (dotted).`}
             </p>
 
-            <div className="mt-4">
-              <p className="eyebrow mb-2">Ride it in</p>
-              <Segmented<View> label="Ride view" value={p.view} onChange={p.setView} options={p.views} />
-            </div>
-            <Btn variant="primary" className="mt-3 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
           </>
         )}
 

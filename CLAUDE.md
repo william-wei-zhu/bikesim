@@ -2,7 +2,7 @@
 
 # RideSim DC (ridesimdc.com)
 
-"Ride it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually in our 3D model, in Google photoreal 3D, or through Google Street View photos. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
+"Ride it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually in our 3D model (default) or through Google Street View photos. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
 
 ## Layout
 - `app/` Next.js 16 App Router. `/` is the map app (client-only via `components/app/MapAppLoader.tsx`). `app/api/geocode` proxies Nominatim (DC-bounded, per-IP limit, 24h in-memory cache).
@@ -12,7 +12,7 @@
   - `geom.ts` street lines and wall footprints built in the browser.
   - `map.ts` MapLibre layers: stress-colored streets, LTS walls, white 3D buildings, route with a stress `line-gradient`.
   - `ride.ts` first-person fly-through; frames carry position + heading for the other views.
-  - `photoreal.ts` Google Photorealistic 3D Tiles via deck.gl (lazy). `streetview.ts` Google StreetViewPanorama that follows the rider (lazy).
+  - `streetview.ts` Google StreetViewPanorama that follows the rider (lazy).
 - `components/app/`: `MapApp` (state, views), `TripPanel` (trip inputs, stress summary, hostile stretches, view choice), `RideHud` (stress meter, edge tint, view and speed switches).
 - `public/data/`: `network.json`, `pois.json` (search suggestions), `meta.json` from `ridescoredc-models/notebooks/ridesim/prep.py`.
 - Theme tokens derive from the logo: `../brand/THEME.md` is the source of truth; `app/globals.css` mirrors it.
@@ -32,6 +32,7 @@
 - 2026-10-01 (later): Cut to one feature. Explore, Islands and Build modes, the rider picker (kid/casual/commuter), fixes, islands math, crashes/wards/blocks data were removed: "the highlight is simulation; less is more" (William). Default rider is a confident commuter (LTS 3). Stress levels stay (street colors, walls, route gradient, HUD meter).
 - 2026-10-01: Street View ride uses the Maps JavaScript API `StreetViewPanorama` (one "Dynamic Street View" load per ride; `setPosition` hops every 18 m and at most ~3/s; ride speed capped at 22 m/s in this view). Same key, now also allowed for `maps-backend.googleapis.com`; daily `billable_default` quota capped at 300. Free 5,000 loads/month, then $14 per 1,000.
 - 2026-10-01: Photoreal route is split into 4-point pieces with `TerrainExtension` "offset" (a single draped path did not render on the 3D tiles). Photoreal and Street View load only during a ride in that view.
+- 2026-10-01 (latest): Photoreal removed at William's request; 3D model is the default ride view, Street View the alternative. deck.gl and the photoreal module were deleted, and the browser key now allows only `maps-backend.googleapis.com` (Map Tiles API no longer used). The env var keeps its old name `NEXT_PUBLIC_GOOGLE_TILES_KEY`; it now powers Street View only. The photoreal notes above are history.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme + tour only (no accounts).
 
 ## Scaling cliff

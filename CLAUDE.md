@@ -49,6 +49,7 @@
 - 2026-10-02: First-time guidance: while a start or end is missing, a step prompt sits on the map ("1 · Start" / "2 · End", "Click" on desktop, "Tap" on phones), the matching trip field gets a green ring, the cursor is a crosshair, and a see-through Start/End pin follows the mouse (`setGhostPin` in map.ts). One-shot entrance animation only.
 - 2026-10-02: Trip panel order: inputs, Start the ride, Route choice, stress bar, hostile stretches. The distance/time/hostile stats row and the route trade-off sentence were removed (William: unnecessary).
 - 2026-10-02: Bigger rider on phones. Street View on narrow/portrait screens uses panorama zoom 1.5 (hfov ~64 deg, vs 0.8 / ~103 deg on desktop) and puts the rider 4.5 m ahead (vs 6 m); the overlay uses the same lens so the rider stays road-anchored (rider ~16% of screen height on a 390x844 phone, was ~5%). 3D view sizes the rider at 27% of map height on portrait screens, 19% on landscape (150 to 280 px).
+- 2026-10-02: Opening view is north-up (bearing 0, was -22 which first-time users found disorienting); trip framing and ride end also reset to north-up. The 58 degree tilt stays so the 3D buildings read.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff

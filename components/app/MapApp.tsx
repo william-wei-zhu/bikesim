@@ -133,7 +133,7 @@ export default function MapApp() {
   useEffect(() => {
     const map = mapRef.current; if (!map || !routeKey || !from || !to || rideRef.current) return;
     map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]],
-      { padding: window.innerWidth < 768 ? { top: 60, bottom: window.innerHeight * 0.5, left: 40, right: 40 } : { top: 80, bottom: 80, left: 480, right: 80 }, duration: 900, maxZoom: 15.5 });
+      { padding: window.innerWidth < 768 ? { top: 60, bottom: window.innerHeight * 0.5, left: 40, right: 40 } : { top: 80, bottom: 80, left: 480, right: 80 }, duration: 900, maxZoom: 15.5, bearing: 0 });
   }, [routeKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -187,7 +187,7 @@ export default function MapApp() {
     const map = mapRef.current;
     if (map?.getLayer("rs-bike")) map.removeLayer("rs-bike");
     bikeRef.current = null;
-    if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: DC_VIEW.pitch, duration: 1000 });
+    if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: DC_VIEW.pitch, bearing: 0, duration: 1000 });
   }, [from, to]);
 
   const startRide = useCallback(() => {

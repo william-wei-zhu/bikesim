@@ -4,7 +4,7 @@ import type { Net } from "./net";
 import { streetLines, EMPTY_FC, LTS_COLOR } from "./geom";
 
 // Opens over downtown and the Mall so the 3D city reads immediately (buildings appear from zoom 13).
-export const DC_VIEW = { center: [-77.0275, 38.8975] as [number, number], zoom: 13.4, pitch: 58, bearing: -22 };
+export const DC_VIEW = { center: [-77.0275, 38.8975] as [number, number], zoom: 13.4, pitch: 58, bearing: 0 }; // north up
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 let workerSet = false;

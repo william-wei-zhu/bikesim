@@ -14,20 +14,17 @@ const EXAMPLES: { label: string; from: Place; to: Place }[] = [
   { label: "Georgetown to Union Station", from: { label: "Georgetown", x: -77.0628, y: 38.9055 }, to: { label: "Union Station", x: -77.0063, y: 38.8973 } },
 ];
 const BAR = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"];
-const SPEED_KMH = 16; // typical everyday cycling pace, for the time estimate
 
 export function TripPanel(p: {
   pois: Poi[]; routes: Routes; kind: RouteKind; setKind: (k: RouteKind) => void; stretches: Stretch[];
   from: Place | null; to: Place | null; setFrom: (x: Place | null) => void; setTo: (x: Place | null) => void;
-  setPick: (k: "from" | "to") => void;
+  setPick: (k: "from" | "to") => void; awaiting: "from" | "to" | null;
   onRide: () => void; onFlyTo: (s: Stretch) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const ok = p.routes && "calm" in p.routes ? p.routes : null;
   const hostile = p.stretches.filter((s) => s.lts === 4);
-  const hostileM = hostile.reduce((a, s) => a + s.lengthM, 0);
   const chosen = ok ? (p.kind === "short" ? ok.fastest : ok.calm) : null;
-  const minutes = chosen ? Math.max(1, Math.round((chosen.lengthM / 1000 / SPEED_KMH) * 60)) : 0;
 
   return (
     <aside aria-label="Trip" className={cn(
@@ -50,12 +47,12 @@ export function TripPanel(p: {
         )}
 
         <div className={cn(!ok && "mt-4", "space-y-2", collapsed && "hidden md:block")}>
-          <div className="flex items-center gap-2">
-            <div className="flex-1"><SearchBox placeholder="Start: address or place" pois={p.pois} value={p.from} onPick={p.setFrom} onClear={() => p.setFrom(null)} /></div>
+          <div className={cn("flex items-center gap-2 rounded-full", p.awaiting === "from" && "ring-2 ring-accent ring-offset-2 ring-offset-paper")}>
+            <div className="flex-1"><SearchBox placeholder="Start: search, or click the map" pois={p.pois} value={p.from} onPick={p.setFrom} onClear={() => p.setFrom(null)} /></div>
             {!p.from && <PickBtn on={() => p.setPick("from")} />}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1"><SearchBox placeholder="Destination" pois={p.pois} value={p.to} onPick={p.setTo} onClear={() => p.setTo(null)} /></div>
+          <div className={cn("flex items-center gap-2 rounded-full", p.awaiting === "to" && "ring-2 ring-accent ring-offset-2 ring-offset-paper")}>
+            <div className="flex-1"><SearchBox placeholder="End: search, or click the map" pois={p.pois} value={p.to} onPick={p.setTo} onClear={() => p.setTo(null)} /></div>
             {!p.to && <PickBtn on={() => p.setPick("to")} />}
           </div>
           {p.from && p.to && (
@@ -73,7 +70,7 @@ export function TripPanel(p: {
                 <Btn key={ex.label} size="sm" variant="quiet" onClick={() => { p.setFrom(ex.from); p.setTo(ex.to); }}>{ex.label}</Btn>
               ))}
             </div>
-            <p className="mt-3 text-[0.8rem] text-ink-2">Or click the map twice: first your start, then your destination.</p>
+            
           </div>
         )}
 
@@ -89,16 +86,11 @@ export function TripPanel(p: {
 
         {ok && (
           <>
+            <Btn variant="primary" className="mt-4 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
             <div className="mt-4">
               <p className="eyebrow mb-2">Route</p>
               <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}
                 options={[{ value: "short", label: `Shortest · ${km(ok.fastest.lengthM)}` }, { value: "calm", label: `Lowest stress · ${km(ok.calm.lengthM)}` }]} />
-            </div>
-            <Btn variant="primary" className="mt-3 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
-            <div className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4">
-              <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(chosen!.lengthM)}</p><p className="eyebrow mt-1">Distance</p></div>
-              <div><p className="font-display text-[1.5rem] font-bold leading-tight">{minutes} min</p><p className="eyebrow mt-1">At {SPEED_KMH} km/h</p></div>
-              <div><p className="font-display text-[1.5rem] font-bold leading-tight">{km(hostileM)}</p><p className="eyebrow mt-1">Hostile</p></div>
             </div>
 
             <div className="mt-4">

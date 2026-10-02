@@ -154,3 +154,20 @@ export function setEndpoints(map: maplibregl.Map, start: [number, number] | null
   }
   pins.set(map, cur);
 }
+
+// ---------- Ghost pin: a see-through Start/End pin that follows the cursor while we wait for a click ----------
+const ghosts = new WeakMap<maplibregl.Map, { marker: maplibregl.Marker; kind: "start" | "end" }>();
+
+/** Show (or move) the ghost pin at lngLat, or hide it with kind = null. */
+export function setGhostPin(map: maplibregl.Map, kind: "start" | "end" | null, lngLat?: [number, number]) {
+  const cur = ghosts.get(map);
+  if (!kind || !lngLat) { cur?.marker.remove(); ghosts.delete(map); return; }
+  if (cur && cur.kind === kind) { cur.marker.setLngLat(lngLat); return; }
+  cur?.marker.remove();
+  const el = pinElement(kind === "start" ? "Start" : "End", kind);
+  el.style.opacity = "0.6";
+  el.removeAttribute("aria-label");
+  el.setAttribute("aria-hidden", "true");
+  const marker = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, 8] }).setLngLat(lngLat).addTo(map);
+  ghosts.set(map, { marker, kind });
+}

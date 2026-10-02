@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
-import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, DC_VIEW } from "@/lib/engine/map";
+import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, DC_VIEW } from "@/lib/engine/map";
 import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, STREETVIEW_HFOV_DEG, STREETVIEW_BASE_PITCH, type StreetViewHandle } from "@/lib/engine/streetview";
@@ -235,6 +235,28 @@ export default function MapApp() {
       if (pick === "to" || (!pick && !to)) { setTo(pin); setPick(null); }
     };
   });
+  // Which pin the next map click sets: guides first-time users step by step (Start, then End).
+  const awaiting: "from" | "to" | null = riding ? null : pick ?? (!from ? "from" : !to ? "to" : null);
+  const awaitingRef = useRef(awaiting);
+  useEffect(() => {
+    awaitingRef.current = awaiting;
+    const map = mapRef.current; if (!map) return;
+    map.getCanvas().style.cursor = awaiting ? "crosshair" : "";
+    if (!awaiting) setGhostPin(map, null);
+  }, [awaiting]);
+  useEffect(() => {
+    const map = mapRef.current; if (!map || !mapReady) return;
+    // Desktop: a see-through Start/End pin follows the cursor, showing exactly what a click will do.
+    const onMove = (e: maplibregl.MapMouseEvent) => {
+      const k = awaitingRef.current;
+      if (!k || (e.originalEvent as PointerEvent).pointerType === "touch") return;
+      setGhostPin(map, k === "from" ? "start" : "end", [e.lngLat.lng, e.lngLat.lat]);
+    };
+    const onLeave = () => setGhostPin(map, null);
+    map.on("mousemove", onMove);
+    map.getCanvasContainer().addEventListener("mouseleave", onLeave);
+    return () => { map.off("mousemove", onMove); map.getCanvasContainer().removeEventListener("mouseleave", onLeave); };
+  }, [mapReady]);
   useEffect(() => {
     const map = mapRef.current; if (!map || !mapReady) return;
     const onClick = (e: maplibregl.MapMouseEvent) => clickRef.current(e);
@@ -252,7 +274,7 @@ export default function MapApp() {
         {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
         {net && !riding && (
           <TripPanel pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
-            setPick={setPick} onRide={startRide} onFlyTo={flyToStretch} />
+            setPick={setPick} awaiting={awaiting} onRide={startRide} onFlyTo={flyToStretch} />
         )}
         {net && riding && rideFrame && (
           <RideHud net={net} frame={rideFrame} playing={ridePlaying} view={view} views={VIEWS} onView={setView} noPhotos={noPhotos}
@@ -261,9 +283,15 @@ export default function MapApp() {
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
             onExit={stopRide} />
         )}
-        {pick && (
-          <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.85rem] font-semibold text-primary-ink shadow-panel">
-            {pick === "from" ? "Click the map to set your start" : "Click the map to set your destination"}
+        {net && awaiting && (
+          // Step prompt on the map itself; one-shot bounce on first appearance, no looping motion.
+          <div key={awaiting} role="status"
+            className="pointer-events-none absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-full bg-primary py-2 pl-2 pr-5 text-[0.9rem] font-semibold text-primary-ink shadow-panel animate-in fade-in slide-in-from-top-3 duration-500 md:left-[calc(50%+220px)]">
+            <span className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${awaiting === "from" ? "bg-paper text-ink" : "bg-accent text-white"}`}>
+              {awaiting === "from" ? "1 · Start" : "2 · End"}
+            </span>
+            <span className="md:hidden">Tap the map to set your {awaiting === "from" ? "start" : "end"}</span>
+            <span className="hidden md:inline">Click the map to set your {awaiting === "from" ? "start" : "end"}</span>
           </div>
         )}
         {toastMsg && (

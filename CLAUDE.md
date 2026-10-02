@@ -14,7 +14,7 @@
   - `ride.ts` first-person fly-through; frames carry position + heading for the other views.
   - `streetview.ts` Google StreetViewPanorama that follows the rider (lazy).
 - `app/about`, `app/privacy`, `app/settings` (theme, default ride view, rider male/female; saved via `lib/prefs.ts` in localStorage); content pages share `components/SiteFrame.tsx`.
-- `components/app/`: `MapApp` (state, views), `TripPanel` (trip inputs, route choice, stress summary, hostile stretches), `RideHud` (stress meter, view and speed switches).
+- `components/app/`: `MapApp` (state, views), `TripPanel` (trip inputs, start button, route choice, stress bar, hostile stretches), `RideHud` (stress meter, view and speed switches).
 - `public/data/`: `network.json`, `pois.json` (search suggestions), `meta.json` from `ridescoredc-models/notebooks/ridesim/prep.py`.
 - Theme tokens derive from the logo: `../brand/THEME.md` is the source of truth; `app/globals.css` mirrors it.
 
@@ -46,6 +46,8 @@
 - 2026-10-02: Street View rider is world-anchored: the overlay camera mirrors the panorama camera (eye 2.5 m, same horizontal FOV `STREETVIEW_HFOV_DEG` = 180/2^zoom, same yaw/pitch), and the rider stands 6 m ahead on the road. Looking around moves rider and street together (verified: rider screen x matches -tan(yaw)/tan(hfov/2) within 2%). Replaces the earlier "rotate the rider at screen centre" approach, which made the rider appear to slide across the road.
 - 2026-10-02: Removed the stress-tinted screen-edge vignette from rides ("this is not Counter-Strike", William). Stress shows in the HUD meter and the ring under the rider only.
 - 2026-10-02: The ride view choice was removed from the trip panel; each ride starts in the Settings default (Street View unless changed) and can still be switched in the ride HUD.
+- 2026-10-02: First-time guidance: while a start or end is missing, a step prompt sits on the map ("1 · Start" / "2 · End", "Click" on desktop, "Tap" on phones), the matching trip field gets a green ring, the cursor is a crosshair, and a see-through Start/End pin follows the mouse (`setGhostPin` in map.ts). One-shot entrance animation only.
+- 2026-10-02: Trip panel order: inputs, Start the ride, Route choice, stress bar, hostile stretches. The distance/time/hostile stats row and the route trade-off sentence were removed (William: unnecessary).
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff

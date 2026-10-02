@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch } from "@/lib/engine/graph";
@@ -22,6 +22,15 @@ export function TripPanel(p: {
   onRide: () => void; onFlyTo: (s: Stretch) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  // The "3 · Ride" prompt on the map reopens a collapsed panel and scrolls Start the ride into view.
+  useEffect(() => {
+    const show = () => {
+      setCollapsed(false);
+      window.setTimeout(() => document.querySelector(".rs-ride-cta")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    };
+    window.addEventListener("rs-show-trip", show);
+    return () => window.removeEventListener("rs-show-trip", show);
+  }, []);
   const ok = p.routes && "calm" in p.routes ? p.routes : null;
   const hostile = p.stretches.filter((s) => s.lts === 4);
   const chosen = ok ? (p.kind === "short" ? ok.fastest : ok.calm) : null;

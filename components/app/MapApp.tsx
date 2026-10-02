@@ -15,7 +15,7 @@ import { Header } from "./Header";
 import { TripPanel } from "./TripPanel";
 import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
-import { readDefaultView } from "@/lib/prefs";
+import { readDefaultView, readRider } from "@/lib/prefs";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
@@ -167,7 +167,7 @@ export default function MapApp() {
     const ov = overlayEl.current;
     if (ov) import("@/lib/engine/bike3d").then(({ createBikeOverlay }) => {
       if (cancelled) return;
-      overlayRef.current = createBikeOverlay(ov);
+      overlayRef.current = createBikeOverlay(ov, readRider());
       overlayRef.current.setState(f && f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1, false, f?.heading ?? 0);
     }).catch(() => { /* photos still work without the rider */ });
     return () => {
@@ -206,7 +206,7 @@ export default function MapApp() {
     // The 3D bike (three.js) loads only when a ride starts.
     import("@/lib/engine/bike3d").then(({ createBikeLayer }) => {
       if (rideRef.current !== r || map.getLayer("rs-bike")) return;
-      const bike = createBikeLayer(map);
+      const bike = createBikeLayer(map, readRider());
       map.addLayer(bike);
       bikeRef.current = bike;
       bike.setPose(line.coords[0], 0, 1, false);

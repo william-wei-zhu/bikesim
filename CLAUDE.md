@@ -13,7 +13,7 @@
   - `map.ts` MapLibre layers: flat stress-colored streets, white 3D buildings, route with a stress `line-gradient`, Start/End pins.
   - `ride.ts` first-person fly-through; frames carry position + heading for the other views.
   - `streetview.ts` Google StreetViewPanorama that follows the rider (lazy).
-- `app/about`, `app/privacy`, `app/settings` (theme + default ride view, saved via `lib/prefs.ts` in localStorage); content pages share `components/SiteFrame.tsx`.
+- `app/about`, `app/privacy`, `app/settings` (theme, default ride view, rider male/female; saved via `lib/prefs.ts` in localStorage); content pages share `components/SiteFrame.tsx`.
 - `components/app/`: `MapApp` (state, views), `TripPanel` (trip inputs, stress summary, hostile stretches, view choice), `RideHud` (stress meter, edge tint, view and speed switches).
 - `public/data/`: `network.json`, `pois.json` (search suggestions), `meta.json` from `ridescoredc-models/notebooks/ridesim/prep.py`.
 - Theme tokens derive from the logo: `../brand/THEME.md` is the source of truth; `app/globals.css` mirrors it.
@@ -42,7 +42,8 @@
 - 2026-10-02: 3D ride camera orbit: drag turns/tilts around the rider, wheel zooms, double-click resets (`Ride.enableOrbit`, MapLibre's own handlers paused during a ride). The same three.js rider (`createBikeModel` in bike3d.ts) is drawn over Street View on a transparent canvas, camera behind the rider (`createBikeOverlay`).
 - 2026-10-02 (later): Street View v3: a ring of 3 panoramas (2 photos preloaded ahead, 11 m apart), new photo fades in on top (700 ms) so there is no brightness dip, dolly is a GPU CSS scale (panorama zoom stays fixed because changing it refetches tiles), duplicate photos swap invisibly. Billing is now 3 loads per Street View session. Drag on Street View sets a yaw/pitch look offset (we handle pointer events; panoramas have pointer-events off) and the 3D rider overlay rotates by the same yaw (`setLook`), double-click resets. The overlay only renders while moving, easing out, or after a look change.
 - 2026-10-02: Ride pace is fixed per view (`Ride.baseMps`): 3D 15 m/s, Street View 5 m/s (~18 km/h) at 1x; options 0.5x, 1x, 2x, 4x. The rider model pivots on its visual centre so looking around never slides it sideways (measured: <1% screen drift at 90 degrees).
-- Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme + default ride view only (no accounts, so no notification/account rows).
+- 2026-10-02: Detailed procedural rider (bike3d.ts `createBikeModel(style)`): spoked wheels with rims and disc rotors, chainring/chain/cog, cranks + pedals, seatpost, shaped saddle, grips + levers, bottle, rear rack + pannier with reflective strip, headlight, blinking taillight. Rider limbs use two-bone IK (arms to the grips, legs to the pedals) on reused segment meshes (no per-frame geometry). Two styles: male (default: green jersey, shorts, short hair) and female (sky jersey, leggings, ponytail), chosen in Settings (`rs-rider` in localStorage, `lib/prefs.ts`).
+- Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff
 `network.json` is ~4 MB (~1.2 MB gzipped) and streets are one client-built GeoJSON source. Fine for one city at ~28k segments; past ~100k segments switch walls to PMTiles.

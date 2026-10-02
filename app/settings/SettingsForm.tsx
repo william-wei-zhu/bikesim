@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Segmented } from "@/components/ui";
-import { DEFAULT_VIEW_KEY, readDefaultView, writeDefaultView, type DefaultView } from "@/lib/prefs";
+import { DEFAULT_VIEW_KEY, RIDER_KEY, readDefaultView, writeDefaultView, readRider, writeRider, type DefaultView, type RiderPref } from "@/lib/prefs";
 
 const noop = () => () => {};
 
@@ -10,7 +10,8 @@ export function SettingsForm() {
   const { theme, setTheme } = useTheme();
   // Render controls only on the client (theme and stored prefs are unknown on the server).
   const mounted = useSyncExternalStore(noop, () => true, () => false);
-  const view = useSyncExternalStore(subscribeView, readDefaultView, () => "street" as DefaultView);
+  const view = useSyncExternalStore(subscribePrefs, readDefaultView, () => "street" as DefaultView);
+  const rider = useSyncExternalStore(subscribePrefs, readRider, () => "male" as RiderPref);
 
   if (!mounted) return <div className="mt-8 h-64" aria-hidden />;
   return (
@@ -23,12 +24,16 @@ export function SettingsForm() {
         <Segmented<DefaultView> label="Default ride view" value={view} onChange={(v) => { writeDefaultView(v); }}
           options={[{ value: "street", label: "Street View" }, { value: "model", label: "3D model" }]} />
       </Row>
+      <Row title="Rider" hint="Who rides along in the 3D view and over Street View.">
+        <Segmented<RiderPref> label="Rider" value={rider} onChange={(v) => { writeRider(v); }}
+          options={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }]} />
+      </Row>
     </div>
   );
 }
 
-function subscribeView(cb: () => void) {
-  const on = (e: StorageEvent) => { if (e.key === DEFAULT_VIEW_KEY || e.key === null) cb(); };
+function subscribePrefs(cb: () => void) {
+  const on = (e: StorageEvent) => { if (e.key === DEFAULT_VIEW_KEY || e.key === RIDER_KEY || e.key === null) cb(); };
   window.addEventListener("storage", on);
   window.addEventListener("rs-prefs", cb);
   return () => { window.removeEventListener("storage", on); window.removeEventListener("rs-prefs", cb); };

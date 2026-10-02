@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           The start and destination you pick live in the page address, so you can share a trip by copying the link.
           Route planning runs entirely in your browser; your trip is not sent to our server.
         </p>
-        <p>Your theme and default ride view are saved in your browser&apos;s local storage, on your device only.</p>
+        <p>Your theme, default ride view and rider choice are saved in your browser&apos;s local storage, on your device only.</p>
       </Section>
 
       <Section title="Some services see your request">

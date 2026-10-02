@@ -14,3 +14,20 @@ export function writeDefaultView(v: DefaultView) {
   try { window.localStorage.setItem(DEFAULT_VIEW_KEY, v); } catch { /* storage blocked: keep the in-session choice only */ }
   window.dispatchEvent(new Event("rs-prefs"));
 }
+
+export type RiderPref = "male" | "female";
+export const RIDER_KEY = "rs-rider";
+
+/** Which 3D rider rides along: male by default. */
+export function readRider(): RiderPref {
+  try {
+    return window.localStorage.getItem(RIDER_KEY) === "female" ? "female" : "male";
+  } catch {
+    return "male";
+  }
+}
+
+export function writeRider(v: RiderPref) {
+  try { window.localStorage.setItem(RIDER_KEY, v); } catch { /* storage blocked: keep the in-session choice only */ }
+  window.dispatchEvent(new Event("rs-prefs"));
+}

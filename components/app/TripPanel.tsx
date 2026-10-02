@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
@@ -86,9 +86,12 @@ export function TripPanel(p: {
 
         {ok && (
           <>
-            {/* The call to action once a trip is set: route green, larger, pops in and pulses three times (replays per trip). */}
+            {/* The call to action once a trip is set: route green, larger, and it keeps nudging until clicked. */}
+            <p className="mt-4 flex items-center justify-center gap-1.5 text-[0.85rem] font-bold text-accent-ink">
+              Next step <ArrowDown className="rs-nudge-down size-4" aria-hidden />
+            </p>
             <button key={`${ok.a}-${ok.b}`} onClick={p.onRide}
-              className="rs-ride-cta group mt-4 flex min-h-14 w-full cursor-pointer items-center justify-center gap-2.5 rounded-full text-[1.05rem] font-bold text-white">
+              className="rs-ride-cta group mt-1.5 flex min-h-14 w-full cursor-pointer items-center justify-center gap-2.5 rounded-full text-[1.05rem] font-bold text-white">
               <Bike className="size-5" aria-hidden /> Start the ride
               <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" aria-hidden />
             </button>

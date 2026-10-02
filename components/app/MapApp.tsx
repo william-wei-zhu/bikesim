@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
+import { ArrowDown, ArrowLeft } from "lucide-react";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
@@ -299,6 +300,17 @@ export default function MapApp() {
             onSeek={(f) => rideRef.current?.seek(f)}
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
             onExit={stopRide} />
+        )}
+        {net && !awaiting && ok && !riding && (
+          // Step 3: the route is ready; point at the Start the ride button in the panel.
+          <div role="status"
+            className="pointer-events-none absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-full bg-primary py-2 pl-2 pr-5 text-[0.9rem] font-semibold text-primary-ink shadow-panel animate-in fade-in slide-in-from-top-3 duration-500 md:left-[calc(50%+220px)]">
+            <ArrowLeft className="rs-nudge-left hidden size-5 md:block" aria-hidden />
+            <span className="rounded-full bg-[#0f8a55] px-2.5 py-1 text-[0.75rem] font-bold text-white">3 · Ride</span>
+            <span className="hidden md:inline">Your route is ready. Click Start the ride</span>
+            <span className="md:hidden">Route ready. Tap Start the ride</span>
+            <ArrowDown className="rs-nudge-down size-5 md:hidden" aria-hidden />
+          </div>
         )}
         {net && awaiting && (
           // Step prompt on the map itself; one-shot bounce on first appearance, no looping motion.

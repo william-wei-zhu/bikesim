@@ -125,23 +125,45 @@ h1, h2, h3, .font-display {
 .dark .rs-pin-start { --pin-bg: #eef3fb; --pin-fg: #082b54; --pin-ring: #082b54; }
 .dark .rs-pin-end { --pin-bg: #2cc47e; --pin-fg: #06182f; --pin-ring: #06182f; }
 
-/* "Start the ride": the one green button. Deep route green: white bold text at ~4.4:1 (large text needs 3:1). */
+/* "Start the ride": the one green button. Deep route green: white bold text at ~4.4:1 (large text needs 3:1).
+   It keeps nudging (breathing swell, pulsing ring, shimmer) until clicked: a deliberate exception to the
+   one-shot motion rule, requested by William so first-time users can't miss it. Reduced motion turns it off. */
 .rs-ride-cta {
+  position: relative;
+  overflow: hidden;
   background: #0f8a55;
   box-shadow: 0 8px 22px rgb(15 138 85 / 0.35);
-  animation: rs-cta-pop 520ms cubic-bezier(0.2, 1.5, 0.4, 1) both, rs-cta-ring 1.3s ease-out 600ms 3;
+  animation: rs-cta-breathe 1.6s ease-in-out infinite, rs-cta-ring 1.6s ease-out infinite;
 }
-.rs-ride-cta:hover { background: #0c7a4a; }
+.rs-ride-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.38) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: rs-cta-shimmer 2.4s ease-in-out 0.4s infinite;
+  pointer-events: none;
+}
+.rs-ride-cta:hover { background: #0c7a4a; animation-play-state: paused; }
 .dark .rs-ride-cta { background: #1cae6d; color: #06182f; box-shadow: 0 8px 22px rgb(44 196 126 / 0.3); }
 .dark .rs-ride-cta:hover { background: #2cc47e; }
-@keyframes rs-cta-pop {
-  0% { transform: scale(0.85); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes rs-cta-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
 }
 @keyframes rs-cta-ring {
-  0% { box-shadow: 0 8px 22px rgb(15 138 85 / 0.35), 0 0 0 0 rgb(28 174 109 / 0.55); }
-  100% { box-shadow: 0 8px 22px rgb(15 138 85 / 0.35), 0 0 0 16px rgb(28 174 109 / 0); }
+  0% { box-shadow: 0 8px 22px rgb(15 138 85 / 0.35), 0 0 0 0 rgb(28 174 109 / 0.7); }
+  70%, 100% { box-shadow: 0 8px 22px rgb(15 138 85 / 0.35), 0 0 0 18px rgb(28 174 109 / 0); }
 }
+@keyframes rs-cta-shimmer {
+  0% { transform: translateX(-120%); }
+  60%, 100% { transform: translateX(120%); }
+}
+/* Small bouncing arrows that point at the button */
+@keyframes rs-nudge-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+@keyframes rs-nudge-left { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
+.rs-nudge-down { animation: rs-nudge-down 0.9s ease-in-out infinite; }
+.rs-nudge-left { animation: rs-nudge-left 0.9s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

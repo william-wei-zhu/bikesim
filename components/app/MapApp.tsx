@@ -15,6 +15,7 @@ import { Header } from "./Header";
 import { TripPanel } from "./TripPanel";
 import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
+import { readDefaultView } from "@/lib/prefs";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
@@ -49,7 +50,7 @@ export default function MapApp() {
   const [from, setFrom] = useState<Place | null>(init?.from ?? null);
   const [to, setTo] = useState<Place | null>(init?.to ?? null);
   const [pick, setPick] = useState<"from" | "to" | null>(null);
-  const [view, setView] = useState<View>(VIEWS[0].value);
+  const [view, setView] = useState<View>(() => (GOOGLE_KEY && typeof window !== "undefined" ? readDefaultView() : "model"));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
   const [ridePlaying, setRidePlaying] = useState(false);

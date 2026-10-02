@@ -57,6 +57,7 @@
 - 2026-10-02: Share this ride: Web Share sheet where available, else copies the URL (the trip is already in the URL). In the trip panel next to Swap and on the finish card.
 - 2026-10-02: "Why is it hostile?": each hostile stretch row expands to RideScore DC block facts (speed limit, lanes, bike facility, arterial class, 5-year crashes) from `public/data/blocks.json` (copied from `data/out/`, indexed by `net.eblock`), loaded lazily on the first tap (`loadBlocks` in net.ts, `explainStretch` in graph.ts). Tapping also flies to the stretch.
 - 2026-10-02: Ride intro card: "Starting on <street> / N km ahead" over the map for ~1.9 s while the camera flies down to street level.
+- 2026-10-02: Design pass. Route gets a soft shadow layer (`rs-route-glow`) and a theme-aware outline (white on light, navy on dark; the dotted alternative turns light blue in dark mode); other streets fade to 30% when a route is shown. Small text raised to a 0.76 to 0.8rem floor (eyebrow 0.72rem semibold mono). The route toggle is two-line (name, then distance in mono) so "Lowest stress" never truncates on phones; `Segmented` options take an optional `sub`.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff

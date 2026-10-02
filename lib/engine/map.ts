@@ -43,6 +43,11 @@ export function applyBasemapTheme(map: maplibregl.Map, dark: boolean) {
     if (!map.getLayer(id)) return;
     try { map.setPaintProperty(id, prop as never, val as never); } catch { /* property not used by this layer */ }
   };
+  // Route outline follows the theme: white on the light map, deep navy on the dark one.
+  set("rs-route-casing", "line-color", dark ? "#06182f" : "#ffffff");
+  set("rs-route-glow", "line-color", dark ? "#1cae6d" : "#082b54");
+  set("rs-route-glow", "line-opacity", dark ? 0.18 : 0.22);
+  set("rs-route-fast", "line-color", dark ? "#9fb7d6" : "#1d3f68");
   for (const l of map.getStyle().layers) {
     const id = l.id;
     if (id.startsWith("rs-")) continue;
@@ -91,6 +96,9 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   });
   map.addLayer({ id: "rs-route-fast", type: "line", source: "rs-route-fast", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#1d3f68", "line-width": 3, "line-dasharray": [1, 2], "line-opacity": 0.75 } });
+  // A soft shadow under the route lifts it off the map so it reads first.
+  map.addLayer({ id: "rs-route-glow", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#082b54", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 14, 16, 28], "line-blur": ["interpolate", ["linear"], ["zoom"], 11, 6, 16, 12], "line-opacity": 0.22, "line-translate": [0, 2] } });
   map.addLayer({ id: "rs-route-casing", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 8, 16, 16] } });
   // The route is colored by stress along its length (line-gradient set per route in setRouteGradient).
@@ -100,7 +108,7 @@ export function addLayers(map: maplibregl.Map, net: Net) {
 
 /** Stress view of the whole city; when a route is shown, the other streets step back so the route reads first. */
 export function applyPaint(map: maplibregl.Map, s: { hasRoute: boolean }) {
-  map.setPaintProperty("rs-streets", "line-opacity", s.hasRoute ? 0.4 : 0.9);
+  map.setPaintProperty("rs-streets", "line-opacity", s.hasRoute ? 0.3 : 0.9);
 }
 
 /** Color the route line by the stress of each stretch, using line-progress stops. */

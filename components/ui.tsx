@@ -10,7 +10,7 @@ export function Btn({ variant = "outline", size = "md", className, ...p }: BtnPr
       {...p}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none",
-        size === "md" ? "min-h-11 px-5 text-[0.85rem]" : "min-h-9 px-4 text-[0.75rem]",
+        size === "md" ? "min-h-11 px-5 text-[0.85rem]" : "min-h-9 px-4 text-[0.8rem]",
         variant === "primary" && "bg-primary text-primary-ink hover:opacity-90",
         variant === "outline" && "border-2 border-ink bg-paper text-ink hover:bg-surface",
         variant === "quiet" && "border border-line bg-surface text-ink hover:border-ink",
@@ -21,7 +21,7 @@ export function Btn({ variant = "outline", size = "md", className, ...p }: BtnPr
 }
 
 export function Segmented<T extends string>({ value, options, onChange, label, className, stretch }: {
-  value: T; options: { value: T; label: string; title?: string }[]; onChange: (v: T) => void; label: string; className?: string;
+  value: T; options: { value: T; label: string; title?: string; sub?: string }[]; onChange: (v: T) => void; label: string; className?: string;
   /** Fill the container width with equal-width options. */
   stretch?: boolean;
 }) {
@@ -35,12 +35,14 @@ export function Segmented<T extends string>({ value, options, onChange, label, c
           title={o.title}
           onClick={() => onChange(o.value)}
           className={cn(
-            "min-h-9 rounded-full px-3.5 text-[0.78rem] font-semibold transition-colors cursor-pointer whitespace-nowrap",
-            stretch && "flex-1 px-2",
+            "min-h-9 rounded-full px-3.5 text-[0.8rem] font-semibold transition-colors cursor-pointer whitespace-nowrap",
+            stretch && "min-w-0 flex-1 px-1.5",
+            o.sub && "flex min-h-12 flex-col items-center justify-center leading-tight",
             value === o.value ? "bg-primary text-primary-ink shadow-sm" : "text-ink hover:bg-paper",
           )}
         >
           {o.label}
+          {o.sub && <span className="mt-0.5 font-mono text-[0.76rem] font-medium opacity-80">{o.sub}</span>}
         </button>
       ))}
     </div>
@@ -69,7 +71,7 @@ export function LtsChip({ lts, label }: { lts: number; label?: string }) {
   const bg = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"][lts];
   const fg = lts === 2 || lts === 3 ? "text-[#082b54]" : "text-white";
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[0.72rem] font-bold", bg, fg)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[0.76rem] font-bold", bg, fg)}>
       LTS {lts}{label ? ` · ${label}` : ""}
     </span>
   );

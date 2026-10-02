@@ -59,7 +59,7 @@ export function TripPanel(p: {
           ? <span className="text-[0.85rem] font-semibold">Show trip</span>
           : <span className="sr-only">Hide trip and show the full map</span>}
       </button>
-      <div className={cn("overflow-y-auto px-5 pb-5 md:block md:pt-5", collapsed && "hidden")}>
+      <div className={cn("overflow-y-auto overflow-x-hidden px-5 pb-5 md:block md:pt-5", collapsed && "hidden")}>
         {!ok && <h2 className="text-[1.5rem] font-bold">Feel it before you ride it.</h2>}
         {!ok && (
           <p className="mt-2 text-[0.85rem] text-ink-2">
@@ -126,7 +126,7 @@ export function TripPanel(p: {
             <div className="mt-4">
               <p className="eyebrow mb-2">Route</p>
               <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}
-                options={[{ value: "short", label: `Shortest · ${km(ok.fastest.lengthM)}` }, { value: "calm", label: `Lowest stress · ${km(ok.calm.lengthM)}` }]} />
+                options={[{ value: "short", label: "Shortest", sub: km(ok.fastest.lengthM) }, { value: "calm", label: "Lowest stress", sub: km(ok.calm.lengthM) }]} />
             </div>
 
             <div className="mt-4">
@@ -137,10 +137,10 @@ export function TripPanel(p: {
               </div>
               <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
                 {[1, 2, 3, 4].map((l) => (
-                  <li key={l} className="flex items-center gap-2 text-[0.8rem]">
+                  <li key={l} className="flex items-center gap-2 whitespace-nowrap text-[0.82rem]">
                     <span className={cn("size-3 shrink-0 rounded-full", BAR[l])} aria-hidden />
                     <span className="flex-1">{LTS_INFO[l]!.name}</span>
-                    <span className="font-mono text-[0.75rem]">{km(chosen!.byLts[l])}</span>
+                    <span className="font-mono text-[0.78rem]">{km(chosen!.byLts[l])}</span>
                   </li>
                 ))}
               </ul>
@@ -196,7 +196,7 @@ export function TripPanel(p: {
           </>
         )}
 
-        <footer className="mt-6 border-t border-line pt-3 text-[0.75rem] leading-relaxed text-ink-2">
+        <footer className="mt-6 border-t border-line pt-3 text-[0.78rem] leading-relaxed text-ink-2">
           Built by <a className="underline underline-offset-2" href="https://www.linkedin.com/in/william-wei-zhu/" target="_blank" rel="noreferrer">William Zhu</a>
           {" · "}Stress scores from <a className="underline underline-offset-2" href="https://ridescoredc.com" target="_blank" rel="noreferrer">RideScore DC</a> by Civic Tech DC
           {" · "}<a className="underline underline-offset-2" href="/privacy">Privacy</a>

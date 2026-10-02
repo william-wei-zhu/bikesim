@@ -355,7 +355,7 @@ export default function MapApp() {
           <button type="button" role="status" onClick={() => window.dispatchEvent(new Event("rs-show-trip"))}
             className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-full bg-primary py-2 pl-2 pr-5 text-[0.9rem] font-semibold text-primary-ink shadow-panel animate-in fade-in slide-in-from-top-3 duration-500 md:left-[calc(50%+220px)]">
             <ArrowLeft className="rs-nudge-left hidden size-5 md:block" aria-hidden />
-            <span className="rounded-full bg-[#0f8a55] px-2.5 py-1 text-[0.75rem] font-bold text-white">3 · Ride</span>
+            <span className="rounded-full bg-[#0f8a55] px-2.5 py-1 text-[0.78rem] font-bold text-white">3 · Ride</span>
             <span className="hidden md:inline">Your route is ready. Click Start the ride</span>
             <span className="md:hidden">Route ready. Tap Start the ride</span>
             <ArrowDown className="rs-nudge-down size-5 md:hidden" aria-hidden />
@@ -365,7 +365,7 @@ export default function MapApp() {
           // Step prompt on the map itself; one-shot bounce on first appearance, no looping motion.
           <div key={awaiting} role="status"
             className="pointer-events-none absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-full bg-primary py-2 pl-2 pr-5 text-[0.9rem] font-semibold text-primary-ink shadow-panel animate-in fade-in slide-in-from-top-3 duration-500 md:left-[calc(50%+220px)]">
-            <span className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${awaiting === "from" ? "bg-paper text-ink" : "bg-accent text-white"}`}>
+            <span className={`rounded-full px-2.5 py-1 text-[0.78rem] font-bold ${awaiting === "from" ? "bg-paper text-ink" : "bg-accent text-white"}`}>
               {awaiting === "from" ? "1 · Start" : "2 · End"}
             </span>
             <span className="md:hidden">Tap the map to set your {awaiting === "from" ? "start" : "end"}</span>

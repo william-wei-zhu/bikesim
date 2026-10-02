@@ -82,8 +82,9 @@ h1, h2, h3, .font-display {
 .eyebrow {
   font-family: var(--font-jetbrains), ui-monospace, monospace;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--ink-2);
 }
 

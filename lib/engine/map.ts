@@ -70,8 +70,6 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   map.addSource("rs-route-fast", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-route", { type: "geojson", data: EMPTY_FC, lineMetrics: true });
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });
-  map.addSource("rs-ends", { type: "geojson", data: EMPTY_FC });
-  map.addSource("rs-rider", { type: "geojson", data: EMPTY_FC });
 
   const ltsColor = ["match", ["get", "lts"], 1, LTS_COLOR[1], 2, LTS_COLOR[2], 3, LTS_COLOR[3], 4, LTS_COLOR[4], "#999"];
   map.addLayer({
@@ -103,10 +101,6 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   // The route is colored by stress along its length (line-gradient set per route in setRouteGradient).
   map.addLayer({ id: "rs-route", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#1cae6d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 5, 16, 10] } });
-  map.addLayer({ id: "rs-ends", type: "circle", source: "rs-ends",
-    paint: { "circle-radius": 9, "circle-color": "#ffffff", "circle-stroke-color": "#082b54", "circle-stroke-width": 5 } });
-  map.addLayer({ id: "rs-rider", type: "circle", source: "rs-rider",
-    paint: { "circle-radius": 10, "circle-color": "#082b54", "circle-stroke-color": "#ffffff", "circle-stroke-width": 4 } });
 }
 
 /** Stress view of the whole city; when a route is shown, everything else steps back so the route reads first. */
@@ -151,4 +145,34 @@ export function riseWalls(onFrame: (scale: number) => void, ms = 1600) {
     if (k < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
+}
+
+// ---------- Start / End pins (DOM markers stay upright and crisp at any pitch) ----------
+const pins = new WeakMap<maplibregl.Map, { start?: maplibregl.Marker; end?: maplibregl.Marker }>();
+
+function pinElement(label: string, fill: string) {
+  const el = document.createElement("div");
+  el.setAttribute("aria-label", `${label} of the trip`);
+  el.style.cssText = "display:flex;flex-direction:column;align-items:center;pointer-events:none;";
+  const tag = document.createElement("div");
+  tag.textContent = label;
+  tag.style.cssText = `background:${fill};color:#fff;font:700 13px/1 var(--font-outfit),system-ui,sans-serif;letter-spacing:.02em;` +
+    "padding:6px 11px;border-radius:999px;box-shadow:0 4px 14px rgb(8 43 84 / .3);border:2px solid #fff;";
+  const stem = document.createElement("div");
+  stem.style.cssText = `width:2px;height:10px;background:${fill};`;
+  const dot = document.createElement("div");
+  dot.style.cssText = `width:16px;height:16px;border-radius:999px;background:#fff;border:4px solid ${fill};box-shadow:0 2px 6px rgb(8 43 84 / .35);`;
+  el.append(tag, stem, dot);
+  return el;
+}
+
+/** Place or clear the Start and End pins. */
+export function setEndpoints(map: maplibregl.Map, start: [number, number] | null, end: [number, number] | null) {
+  const cur = pins.get(map) ?? {};
+  for (const [key, pos, label, fill] of [["start", start, "Start", "#082b54"], ["end", end, "End", "#1cae6d"]] as const) {
+    if (!pos) { cur[key]?.remove(); cur[key] = undefined; continue; }
+    if (!cur[key]) cur[key] = new maplibregl.Marker({ element: pinElement(label, fill), anchor: "bottom", offset: [0, 8] }).setLngLat(pos).addTo(map);
+    else cur[key]!.setLngLat(pos);
+  }
+  pins.set(map, cur);
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Pause, Play, X } from "lucide-react";
+import { Maximize2, Minimize2, Pause, Play, X } from "lucide-react";
 import { edgeName, LTS_INFO, type Net } from "@/lib/engine/net";
 import type { RideFrame } from "@/lib/engine/ride";
 import { Segmented, km } from "@/components/ui";
@@ -16,6 +16,7 @@ export function RideHud({ net, frame, playing, view, views, onView, onPlayPause,
   noPhotos: boolean;
 }) {
   const [speed, setSpeed] = useState("1");
+  const [collapsed, setCollapsed] = useState(false);
   const e = frame.edgeIdx;
   const lts = e >= 0 ? net.elts[e] : 1;
   return (
@@ -24,17 +25,35 @@ export function RideHud({ net, frame, playing, view, views, onView, onPlayPause,
       <div aria-hidden className="pointer-events-none absolute inset-0 z-10 transition-[box-shadow] duration-700"
         style={{ boxShadow: `inset 0 0 120px 30px ${EDGE_TINT[lts]}` }} />
       {noPhotos && view === "street" && (
-        <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.8rem] font-semibold text-primary-ink shadow-panel">
+        <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.8rem] font-semibold text-primary-ink shadow-panel">
           No street photos on this stretch
         </div>
       )}
-      <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-xl rounded-card border border-line bg-paper p-4 shadow-panel md:bottom-6">
-        <div className="flex items-start gap-3">
+      {collapsed && (
+        // Minimal pill so the view is almost full screen; tap expand to bring the controls back.
+        <div className="absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-full border border-line bg-paper py-1.5 pl-2 pr-1.5 shadow-panel md:left-4 md:top-4">
+          <button onClick={onPlayPause} aria-label={playing ? "Pause" : "Play"} className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-ink cursor-pointer">
+            {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+          </button>
+          <span className={cn("size-3 shrink-0 rounded-full", COLORS[lts])} aria-hidden />
+          <span className="truncate text-[0.85rem] font-semibold">{e >= 0 ? edgeName(net, e) : "Starting"}</span>
+          <button onClick={() => setCollapsed(false)} aria-label="Show ride controls" title="Show ride controls"
+            className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
+            <Maximize2 className="size-4" />
+          </button>
+        </div>
+      )}
+      <div className={cn("absolute inset-x-3 top-3 z-20 rounded-card border border-line bg-paper p-4 shadow-panel md:inset-x-auto md:left-4 md:top-4 md:w-[400px]", collapsed && "hidden")}>
+        <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-[1.3rem] font-bold">{e >= 0 ? edgeName(net, e) : "Starting"}</p>
             <p className="text-[0.85rem] font-semibold" aria-live="polite">{LTS_INFO[lts]?.name} · {LTS_INFO[lts]?.who}</p>
           </div>
-          <button onClick={onExit} aria-label="End ride" className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
+          <button onClick={() => setCollapsed(true)} aria-label="Hide ride controls" title="Hide ride controls (full screen view)"
+            className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
+            <Minimize2 className="size-4" />
+          </button>
+          <button onClick={onExit} aria-label="End ride" title="End ride" className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
             <X className="size-4" />
           </button>
         </div>

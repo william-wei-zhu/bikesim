@@ -4,8 +4,9 @@ import { useTheme } from "next-themes";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
-import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, riseWalls, DC_VIEW } from "@/lib/engine/map";
-import { lineFC, pointsFC, EMPTY_FC } from "@/lib/engine/geom";
+import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, riseWalls, DC_VIEW } from "@/lib/engine/map";
+import type { BikeLayer } from "@/lib/engine/bike3d";
+import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, type StreetViewHandle } from "@/lib/engine/streetview";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
@@ -17,7 +18,7 @@ import { Loading } from "./Loading";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
-  ? [{ value: "model", label: "3D model" }, { value: "street", label: "Street View" }]
+  ? [{ value: "street", label: "Street View" }, { value: "model", label: "3D model" }]
   : [{ value: "model", label: "3D model" }];
 const STREET_MAX_MPS = 22; // Street View hops photo to photo; faster than this and it can't keep up
 
@@ -56,6 +57,7 @@ export default function MapApp() {
   const [noPhotos, setNoPhotos] = useState(false);
   const rideRef = useRef<Ride | null>(null);
   const streetRef = useRef<StreetViewHandle | null>(null);
+  const bikeRef = useRef<BikeLayer | null>(null);
   const wallScale = useRef(0);
   const layersAdded = useRef(false);
 
@@ -104,7 +106,7 @@ export default function MapApp() {
   useEffect(() => {
     const map = mapRef.current; if (!map || !layersAdded.current || !net) return;
     applyPaint(map, { wallScale: wallScale.current || 1, hasRoute: !!ok });
-    setData(map, "rs-ends", pointsFC([from, to].filter(Boolean) as Place[]));
+    setEndpoints(map, from ? [from.x, from.y] : null, to ? [to.x, to.y] : null);
     if (ok && line) {
       setData(map, "rs-route", lineFC(line.coords));
       setRouteGradient(map, stretches.map((s) => ({ at: s.startM / ok.calm.lengthM, lts: s.lts })));
@@ -159,6 +161,8 @@ export default function MapApp() {
     rideRef.current?.stop(); rideRef.current = null;
     setRideFrame(null); setRidePlaying(false); setRiding(false);
     const map = mapRef.current;
+    if (map?.getLayer("rs-bike")) map.removeLayer("rs-bike");
+    bikeRef.current = null;
     if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: DC_VIEW.pitch, duration: 1000 });
   }, [from, to]);
 
@@ -169,13 +173,22 @@ export default function MapApp() {
     const r = new Ride(map, line.coords, line.segEdge, (f) => {
       setRideFrame(f);
       streetRef.current?.follow(f.pos, f.heading);
+      bikeRef.current?.setPose(f.pos, f.heading, f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1, true);
     }, () => setRidePlaying(false));
     if (view === "street") r.maxMps = STREET_MAX_MPS;
     rideRef.current = r;
     setRiding(true); setRidePlaying(true);
+    // The 3D bike (three.js) loads only when a ride starts.
+    import("@/lib/engine/bike3d").then(({ createBikeLayer }) => {
+      if (rideRef.current !== r || map.getLayer("rs-bike")) return;
+      const bike = createBikeLayer(map);
+      map.addLayer(bike);
+      bikeRef.current = bike;
+      bike.setPose(line.coords[0], 0, 1, false);
+    }).catch(() => { /* the ride still works without the bike model */ });
     map.flyTo({ center: line.coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
     window.setTimeout(() => { if (rideRef.current === r) r.play(); }, 1550);
-  }, [line, view]);
+  }, [line, view, net]);
 
   const flyToStretch = useCallback((s: Stretch) => {
     if (!net) return;

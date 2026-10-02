@@ -50,9 +50,9 @@ export class Ride {
     if (this.bearing === null) this.bearing = target;
     const diff = ((target - this.bearing + 540) % 360) - 180;
     this.bearing += diff * 0.08;
-    this.map.jumpTo({ center: p, bearing: this.bearing, pitch: 74, zoom: 17.8 }); // low enough to ride between buildings
-    const src = this.map.getSource("rs-rider") as maplibregl.GeoJSONSource | undefined;
-    src?.setData({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: p } }] });
+    // Low enough to ride between buildings; padding puts the bike in the lower third, road ahead visible.
+    const h = this.map.getCanvas().clientHeight;
+    this.map.jumpTo({ center: p, bearing: this.bearing, pitch: 72, zoom: 18.2, padding: { top: h * 0.45, bottom: 0, left: 0, right: 0 } });
     this.current = { distM: this.d, totalM: this.total, edgeIdx: this.edgeAt[seg] ?? -1, pos: p, heading: this.bearing ?? 0 };
     this.onFrame(this.current);
   }
@@ -84,7 +84,6 @@ export class Ride {
 
   stop() {
     this.pause();
-    const src = this.map.getSource("rs-rider") as maplibregl.GeoJSONSource | undefined;
-    src?.setData({ type: "FeatureCollection", features: [] });
+    this.map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
   }
 }

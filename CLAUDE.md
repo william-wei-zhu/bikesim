@@ -2,7 +2,7 @@
 
 # RideSim DC (ridesimdc.com)
 
-"Feel it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually in our 3D model (default) or through Google Street View photos. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
+"Feel it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually through Google Street View photos (default) or in our 3D model. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
 
 ## Layout
 - `app/` Next.js 16 App Router. `/` is the map app (client-only via `components/app/MapAppLoader.tsx`). `app/api/geocode` proxies Nominatim (DC-bounded, per-IP limit, 24h in-memory cache).
@@ -33,6 +33,8 @@
 - 2026-10-01: Street View ride uses the Maps JavaScript API `StreetViewPanorama` (one "Dynamic Street View" load per ride; `setPosition` hops every 18 m and at most ~3/s; ride speed capped at 22 m/s in this view). Same key, now also allowed for `maps-backend.googleapis.com`; daily `billable_default` quota capped at 300. Free 5,000 loads/month, then $14 per 1,000.
 - 2026-10-01: Photoreal route is split into 4-point pieces with `TerrainExtension` "offset" (a single draped path did not render on the 3D tiles). Photoreal and Street View load only during a ride in that view.
 - 2026-10-01 (latest): Photoreal removed at William's request; 3D model is the default ride view, Street View the alternative. deck.gl and the photoreal module were deleted, and the browser key now allows only `maps-backend.googleapis.com` (Map Tiles API no longer used). The env var keeps its old name `NEXT_PUBLIC_GOOGLE_TILES_KEY`; it now powers Street View only. The photoreal notes above are history.
+- 2026-10-02: Street View is the default ride view (3D model second; 3D only if no Google key). The ride HUD sits top-left (top on phones) and collapses to a pill (play/pause, stress dot, street name, expand) for a near full-screen view.
+- 2026-10-02: Start/End pins are DOM `maplibregl.Marker`s (`setEndpoints` in map.ts) so labels stay upright and use the brand font. The rider in 3D view is a procedural three.js bike + rider (`bike3d.ts`, MapLibre custom 3D layer, loaded only when a ride starts): navy frame, green accents, spinning wheels, pedaling legs, lean into turns, stress-tinted glow ring; scaled to ~150 px on screen at any zoom. Ride camera pads the top 45% so the bike sits in the lower third.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme + tour only (no accounts).
 
 ## Scaling cliff

@@ -126,18 +126,20 @@ export function setData(map: maplibregl.Map, id: string, data: GeoJSON.FeatureCo
 // ---------- Start / End pins (DOM markers stay upright and crisp at any pitch) ----------
 const pins = new WeakMap<maplibregl.Map, { start?: maplibregl.Marker; end?: maplibregl.Marker }>();
 
-function pinElement(label: string, fill: string) {
+function pinElement(label: string, kind: "start" | "end") {
+  // Colors come from CSS variables (globals.css) so the pins follow the light/dark theme.
   const el = document.createElement("div");
+  el.className = `rs-pin rs-pin-${kind}`;
   el.setAttribute("aria-label", `${label} of the trip`);
   el.style.cssText = "display:flex;flex-direction:column;align-items:center;pointer-events:none;";
   const tag = document.createElement("div");
   tag.textContent = label;
-  tag.style.cssText = `background:${fill};color:#fff;font:700 13px/1 var(--font-outfit),system-ui,sans-serif;letter-spacing:.02em;` +
-    "padding:6px 11px;border-radius:999px;box-shadow:0 4px 14px rgb(8 43 84 / .3);border:2px solid #fff;";
+  tag.style.cssText = "background:var(--pin-bg);color:var(--pin-fg);font:700 13px/1 var(--font-outfit),system-ui,sans-serif;letter-spacing:.02em;" +
+    "padding:6px 11px;border-radius:999px;box-shadow:0 4px 14px rgb(8 43 84 / .3);border:2px solid var(--pin-ring);";
   const stem = document.createElement("div");
-  stem.style.cssText = `width:2px;height:10px;background:${fill};`;
+  stem.style.cssText = "width:2px;height:10px;background:var(--pin-bg);";
   const dot = document.createElement("div");
-  dot.style.cssText = `width:16px;height:16px;border-radius:999px;background:#fff;border:4px solid ${fill};box-shadow:0 2px 6px rgb(8 43 84 / .35);`;
+  dot.style.cssText = "width:16px;height:16px;border-radius:999px;background:var(--pin-ring);border:4px solid var(--pin-bg);box-shadow:0 2px 6px rgb(8 43 84 / .35);";
   el.append(tag, stem, dot);
   return el;
 }
@@ -145,9 +147,9 @@ function pinElement(label: string, fill: string) {
 /** Place or clear the Start and End pins. */
 export function setEndpoints(map: maplibregl.Map, start: [number, number] | null, end: [number, number] | null) {
   const cur = pins.get(map) ?? {};
-  for (const [key, pos, label, fill] of [["start", start, "Start", "#082b54"], ["end", end, "End", "#1cae6d"]] as const) {
+  for (const [key, pos, label] of [["start", start, "Start"], ["end", end, "End"]] as const) {
     if (!pos) { cur[key]?.remove(); cur[key] = undefined; continue; }
-    if (!cur[key]) cur[key] = new maplibregl.Marker({ element: pinElement(label, fill), anchor: "bottom", offset: [0, 8] }).setLngLat(pos).addTo(map);
+    if (!cur[key]) cur[key] = new maplibregl.Marker({ element: pinElement(label, key), anchor: "bottom", offset: [0, 8] }).setLngLat(pos).addTo(map);
     else cur[key]!.setLngLat(pos);
   }
   pins.set(map, cur);

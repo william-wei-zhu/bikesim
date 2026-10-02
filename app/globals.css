@@ -119,6 +119,12 @@ h1, h2, h3, .font-display {
   padding: 8px 12px;
 }
 
+/* Start/End map pins: navy Start on the light map, near-white Start on the dark map. */
+.rs-pin-start { --pin-bg: #082b54; --pin-fg: #ffffff; --pin-ring: #ffffff; }
+.rs-pin-end { --pin-bg: #1cae6d; --pin-fg: #ffffff; --pin-ring: #ffffff; }
+.dark .rs-pin-start { --pin-bg: #eef3fb; --pin-fg: #082b54; --pin-ring: #082b54; }
+.dark .rs-pin-end { --pin-bg: #2cc47e; --pin-fg: #06182f; --pin-ring: #06182f; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

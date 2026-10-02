@@ -73,11 +73,16 @@ export async function enablePhotoreal(
       } as never));
     }
     if (state.route && state.route.length > 1) {
-      const path = [{ path: state.route }];
-      out.push(new PathLayer({ id: "pr-route-casing", data: path, getPath: (d: { path: number[][] }) => d.path, getColor: [255, 255, 255, 255],
-        getWidth: 14, widthUnits: "pixels", capRounded: true, jointRounded: true, extensions: [terrainOffset], terrainDrawMode: "drape" } as never));
-      out.push(new PathLayer({ id: "pr-route", data: path, getPath: (d: { path: number[][] }) => d.path, getColor: [28, 174, 109, 255],
-        getWidth: 8, widthUnits: "pixels", capRounded: true, jointRounded: true, extensions: [terrainOffset], terrainDrawMode: "drape" } as never));
+      // Split the route into short pieces: "offset" lifts each piece by the terrain height under it,
+      // so the line follows DC's hills (draping a single long path did not render on the 3D tiles).
+      const pieces: { path: number[][] }[] = [];
+      for (let i = 0; i < state.route.length - 1; i += 3) {
+        pieces.push({ path: state.route.slice(i, Math.min(i + 4, state.route.length)).map(([x, y]) => [x, y, 2.5]) });
+      }
+      const common = { data: pieces, getPath: (d: { path: number[][] }) => d.path, widthUnits: "pixels", capRounded: true, jointRounded: true,
+        extensions: [terrainOffset], terrainDrawMode: "offset" };
+      out.push(new PathLayer({ id: "pr-route-casing", ...common, getColor: [255, 255, 255, 255], getWidth: 14 } as never));
+      out.push(new PathLayer({ id: "pr-route", ...common, getColor: [28, 174, 109, 255], getWidth: 8 } as never));
     }
     if (state.rider) {
       out.push(new ScatterplotLayer({ id: "pr-rider", data: [state.rider], getPosition: (d: [number, number]) => [d[0], d[1], 2],

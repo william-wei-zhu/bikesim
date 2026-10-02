@@ -2,7 +2,7 @@
 import type * as maplibregl from "maplibre-gl";
 import { distM } from "./net";
 
-export interface RideFrame { distM: number; totalM: number; edgeIdx: number; pos: [number, number] }
+export interface RideFrame { distM: number; totalM: number; edgeIdx: number; pos: [number, number]; heading: number }
 
 export class Ride {
   private cum: number[] = [];
@@ -12,7 +12,10 @@ export class Ride {
   private bearing: number | null = null;
   d = 0;
   playing = false;
+  /** Last rendered frame, so a view switched on mid-ride can start where the rider is. */
+  current: RideFrame | null = null;
   speed = 1; // multiplier on base speed
+  maxMps = Infinity; // Street View caps speed so photos can keep up
 
   constructor(
     private map: maplibregl.Map,
@@ -29,7 +32,7 @@ export class Ride {
   get total() { return this.cum[this.cum.length - 1]; }
 
   /** Base speed scales with route length so any ride takes roughly 35 to 60 seconds. */
-  private get mps() { return Math.max(60, Math.min(220, this.total / 45)) * this.speed; }
+  private get mps() { return Math.min(this.maxMps, Math.max(60, Math.min(220, this.total / 45))) * this.speed; }
 
   private pointAt(d: number): { p: [number, number]; seg: number } {
     const c = this.cum;
@@ -50,7 +53,8 @@ export class Ride {
     this.map.jumpTo({ center: p, bearing: this.bearing, pitch: 74, zoom: 17.8 }); // low enough to ride between buildings
     const src = this.map.getSource("rs-rider") as maplibregl.GeoJSONSource | undefined;
     src?.setData({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: p } }] });
-    this.onFrame({ distM: this.d, totalM: this.total, edgeIdx: this.edgeAt[seg] ?? -1, pos: p });
+    this.current = { distM: this.d, totalM: this.total, edgeIdx: this.edgeAt[seg] ?? -1, pos: p, heading: this.bearing ?? 0 };
+    this.onFrame(this.current);
   }
 
   play() {

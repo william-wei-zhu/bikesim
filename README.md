@@ -1,6 +1,6 @@
 # RideSim DC
 
-Break the walls, ride the city. A 3D map of where Washington, DC streets become walls for people on bikes, who those walls cut off, and which single fixes would connect the most residents.
+Ride it before you ride it. Pick any trip in Washington, DC, see how stressful every block is, then ride it virtually in 3D, in photoreal, or through real street photos.
 
 Live at https://ridesimdc.com. Built on [RideScore DC](https://ridescoredc.com) by Civic Tech DC.
 

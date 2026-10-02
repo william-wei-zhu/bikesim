@@ -1,10 +1,8 @@
 // MapLibre setup: logo-colored basemap, RideSim layers, and state -> paint updates.
 import * as maplibregl from "maplibre-gl";
-import type { Net, Extras, Poi } from "./net";
-import { streetLines, wallFootprints, pointsFC, EMPTY_FC, LTS_COLOR, LTS_HEIGHT, ISLAND_COLORS } from "./geom";
-import type { Islands } from "./graph";
+import type { Net } from "./net";
+import { streetLines, wallFootprints, EMPTY_FC, LTS_COLOR, LTS_HEIGHT } from "./geom";
 
-export type Mode = "explore" | "islands" | "build" | "ride";
 // Opens over downtown and the Mall so the 3D city reads immediately (buildings appear from zoom 13).
 export const DC_VIEW = { center: [-77.0275, 38.8975] as [number, number], zoom: 13.4, pitch: 58, bearing: -22 };
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
@@ -65,7 +63,7 @@ export function applyBasemapTheme(map: maplibregl.Map, dark: boolean) {
 }
 
 /** Add all RideSim sources and layers. Call once after the style loads. */
-export function addLayers(map: maplibregl.Map, net: Net, extras: Extras | null) {
+export function addLayers(map: maplibregl.Map, net: Net) {
   const firstLabel = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
   map.addSource("rs-streets", { type: "geojson", data: streetLines(net) });
   map.addSource("rs-walls", { type: "geojson", data: wallFootprints(net) });
@@ -73,15 +71,12 @@ export function addLayers(map: maplibregl.Map, net: Net, extras: Extras | null) 
   map.addSource("rs-route", { type: "geojson", data: EMPTY_FC, lineMetrics: true });
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-ends", { type: "geojson", data: EMPTY_FC });
-  map.addSource("rs-crashes", { type: "geojson", data: EMPTY_FC });
-  map.addSource("rs-pois", { type: "geojson", data: EMPTY_FC });
-  map.addSource("rs-wards", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-rider", { type: "geojson", data: EMPTY_FC });
 
-  map.addLayer({ id: "rs-wards", type: "line", source: "rs-wards", paint: { "line-color": "#8ea7c4", "line-width": 1.2, "line-dasharray": [3, 3] } }, firstLabel);
+  const ltsColor = ["match", ["get", "lts"], 1, LTS_COLOR[1], 2, LTS_COLOR[2], 3, LTS_COLOR[3], 4, LTS_COLOR[4], "#999"];
   map.addLayer({
     id: "rs-streets", type: "line", source: "rs-streets", layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 13, 2.2, 16, 5, 18, 9] },
+    paint: { "line-color": ltsColor as never, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 13, 2.2, 16, 5, 18, 9] },
   }, firstLabel);
   map.addLayer({ id: "rs-break", type: "line", source: "rs-break", layout: { "line-cap": "round" },
     paint: { "line-color": "#e5484d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 6, 16, 14], "line-opacity": 0.55, "line-blur": 2 } });
@@ -99,106 +94,43 @@ export function addLayers(map: maplibregl.Map, net: Net, extras: Extras | null) 
   });
   map.addLayer({
     id: "rs-walls", type: "fill-extrusion", source: "rs-walls",
-    paint: { "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.88, "fill-extrusion-vertical-gradient": true },
+    paint: { "fill-extrusion-base": 0, "fill-extrusion-color": ltsColor as never, "fill-extrusion-vertical-gradient": true },
   });
   map.addLayer({ id: "rs-route-fast", type: "line", source: "rs-route-fast", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#1d3f68", "line-width": 3, "line-dasharray": [1, 2], "line-opacity": 0.75 } });
   map.addLayer({ id: "rs-route-casing", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 7, 16, 14] } });
+    paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 8, 16, 16] } });
+  // The route is colored by stress along its length (line-gradient set per route in setRouteGradient).
   map.addLayer({ id: "rs-route", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": "#1cae6d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 9] } });
-  map.addLayer({ id: "rs-crashes", type: "circle", source: "rs-crashes",
-    paint: {
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, ["match", ["get", "s"], 2, 6, 1, 4, 2.5], 16, ["match", ["get", "s"], 2, 12, 1, 8, 5]],
-      "circle-color": ["match", ["get", "s"], 2, "#7a0f1c", 1, "#e5484d", "#f5a524"],
-      "circle-stroke-color": "#ffffff", "circle-stroke-width": 1,
-    } });
-  map.addLayer({ id: "rs-pois", type: "circle", source: "rs-pois", minzoom: 11,
-    paint: {
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 3.5, 16, 8],
-      "circle-color": ["case", ["boolean", ["get", "on"], false], "#082b54", "#8ea7c4"],
-      "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5,
-    } });
+    paint: { "line-color": "#1cae6d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 5, 16, 10] } });
   map.addLayer({ id: "rs-ends", type: "circle", source: "rs-ends",
-    paint: { "circle-radius": 9, "circle-color": "#ffffff", "circle-stroke-color": "#1cae6d", "circle-stroke-width": 5 } });
+    paint: { "circle-radius": 9, "circle-color": "#ffffff", "circle-stroke-color": "#082b54", "circle-stroke-width": 5 } });
   map.addLayer({ id: "rs-rider", type: "circle", source: "rs-rider",
     paint: { "circle-radius": 10, "circle-color": "#082b54", "circle-stroke-color": "#ffffff", "circle-stroke-width": 4 } });
-
-  if (extras) setExtras(map, extras);
 }
 
-export function setExtras(map: maplibregl.Map, extras: Extras) {
-  (map.getSource("rs-crashes") as maplibregl.GeoJSONSource).setData(pointsFC(extras.crashes.map(([x, y, s, yr]) => ({ x, y, s, yr }))));
-  (map.getSource("rs-wards") as maplibregl.GeoJSONSource).setData(extras.wards);
-}
-
-export function setPois(map: maplibregl.Map, pois: Poi[], onIsland: (p: Poi) => boolean) {
-  (map.getSource("rs-pois") as maplibregl.GeoJSONSource | undefined)?.setData(pointsFC(pois.map((p) => ({ ...p, on: onIsland(p) }))));
-}
-
-export interface PaintState { mode: Mode; threshold: number; wallScale: number; dark: boolean; focusRoot: number | null }
-
-/** Paint expressions for the current mode/rider. Cheap: no data reload. */
-export function applyPaint(map: maplibregl.Map, s: PaintState) {
-  const fixed = ["boolean", ["feature-state", "fixed"], false];
-  const ltsColor = ["match", ["get", "lts"], 1, LTS_COLOR[1], 2, LTS_COLOR[2], 3, LTS_COLOR[3], 4, LTS_COLOR[4], "#999"];
-  const rideable = ["any", ["<=", ["get", "lts"], s.threshold], fixed];
-  const islandColor = ["match", ["number", ["feature-state", "isl"], -1],
-    ...ISLAND_COLORS.flatMap((c, i) => [i, c]), s.dark ? "#3a5a80" : "#a9b9cf"];
-  const selected = ["boolean", ["feature-state", "sel"], false];
-
-  const muted = s.dark ? "#2b4a70" : "#c9d5e6";
-  const streetColor = s.mode === "explore"
-    ? ["case", selected, "#082b54", fixed, LTS_COLOR[1], ltsColor]
-    : s.mode === "ride"
-      ? ["case", rideable, s.dark ? "#2a6a52" : "#b9e4cc", muted] // quiet so the route pops
-      : ["case", selected, "#082b54", rideable, islandColor, muted];
-  map.setPaintProperty("rs-streets", "line-color", streetColor as never);
-  const dimmed = s.focusRoot !== null && s.mode !== "explore"
-    ? ["case", ["==", ["number", ["feature-state", "root"], -1], s.focusRoot], 1, 0.25]
-    : 1;
-  map.setPaintProperty("rs-streets", "line-opacity", dimmed as never);
-
-  // Rideable streets (islands) get thicker lines outside Explore so the islands read clearly.
-  const zw = (calm: number[], other: number[]) => ["interpolate", ["linear"], ["zoom"],
-    10, ["case", rideable, calm[0], other[0]], 13, ["case", rideable, calm[1], other[1]],
-    16, ["case", rideable, calm[2], other[2]], 18, ["case", rideable, calm[3], other[3]]];
-  map.setPaintProperty("rs-streets", "line-width", (s.mode === "explore"
-    ? ["interpolate", ["linear"], ["zoom"], 10, 0.8, 13, 2.2, 16, 5, 18, 9]
-    : zw([1.6, 3.6, 7, 12], [0.6, 1.4, 3, 5])) as never);
-
-  // Walls dominate in Explore; elsewhere they recede behind the islands / route.
-  const modeScale = s.mode === "explore" ? 1 : s.mode === "build" ? 0.7 : 0.45;
-  map.setPaintProperty("rs-walls", "fill-extrusion-opacity", s.mode === "explore" ? 0.85 : s.mode === "build" ? 0.7 : 0.5);
-  const h = ["match", ["get", "lts"], 2, LTS_HEIGHT[2] * modeScale, 3, LTS_HEIGHT[3] * modeScale, 4, LTS_HEIGHT[4] * modeScale, 0];
-  const show = s.mode === "explore" ? true : [">", ["get", "lts"], s.threshold];
+/** Stress view of the whole city; when a route is shown, everything else steps back so the route reads first. */
+export function applyPaint(map: maplibregl.Map, s: { wallScale: number; hasRoute: boolean }) {
+  map.setPaintProperty("rs-streets", "line-opacity", s.hasRoute ? 0.45 : 1);
+  map.setPaintProperty("rs-walls", "fill-extrusion-opacity", s.hasRoute ? 0.55 : 0.85);
+  const h = ["match", ["get", "lts"], 2, LTS_HEIGHT[2], 3, LTS_HEIGHT[3], 4, LTS_HEIGHT[4], 0];
   // Tall at city scale (buildings hidden), about a quarter height at street level so walls sit
   // between DC's buildings (height limit keeps most under 40 m) instead of burying them.
-  const wallH = ["case", fixed, 0, show as never, ["*", h, s.wallScale], 0];
+  const wallH = ["*", h, s.wallScale];
   map.setPaintProperty("rs-walls", "fill-extrusion-height",
     ["interpolate", ["linear"], ["zoom"], 12.5, wallH, 15, ["*", wallH, 0.26]] as never);
-  map.setPaintProperty("rs-walls", "fill-extrusion-color", ["case", selected, "#082b54", ltsColor] as never);
 }
 
-/** Write per-edge feature state: island index for coloring, root for focus dimming, fixed flag. */
-export function applyIslands(map: maplibregl.Map, net: Net, is: Islands, threshold: number, fixed: Set<number>) {
-  for (let e = 0; e < net.nEdges; e++) {
-    const root = is.comp[net.eu[e]];
-    const rank = is.rankOf.get(root);
-    const ride = net.elts[e] <= threshold || fixed.has(e);
-    const isl = ride && rank !== undefined && rank < ISLAND_COLORS.length && (is.compPop.get(root) || 0) > 300 ? rank : -1;
-    const st = { isl, root: ride ? root : -2, fixed: fixed.has(e) };
-    map.setFeatureState({ source: "rs-streets", id: e }, st);
-    if (net.elts[e] > 1) map.setFeatureState({ source: "rs-walls", id: e }, { fixed: st.fixed });
+/** Color the route line by the stress of each stretch, using line-progress stops. */
+export function setRouteGradient(map: maplibregl.Map, stops: { at: number; lts: number }[]) {
+  if (!map.getLayer("rs-route") || stops.length === 0) return;
+  const expr: unknown[] = ["step", ["line-progress"], LTS_COLOR[stops[0].lts]];
+  let last = 0;
+  for (const s of stops.slice(1)) {
+    if (s.at > last && s.at < 1) { expr.push(s.at, LTS_COLOR[s.lts]); last = s.at; }
   }
-}
-
-export function setSelected(map: maplibregl.Map, prev: number | null, next: number | null) {
-  for (const [id, v] of [[prev, false], [next, true]] as const) {
-    if (id === null || id < 0) continue;
-    map.setFeatureState({ source: "rs-streets", id }, { sel: v });
-    map.setFeatureState({ source: "rs-walls", id }, { sel: v });
-  }
+  if (expr.length === 3) expr.push(1, LTS_COLOR[stops[0].lts]); // "step" needs at least one stop
+  map.setPaintProperty("rs-route", "line-gradient", expr as never);
 }
 
 export function setVisible(map: maplibregl.Map, id: string, on: boolean) {

@@ -3,8 +3,6 @@ import type { Net } from "./net";
 
 export const LTS_COLOR = ["#999", "#1cae6d", "#9bd65a", "#f5a524", "#e5484d"];
 export const LTS_HEIGHT = [0, 0, 6, 30, 70]; // metres, before exaggeration
-// Island palette from logo hues (greens, blues, slate): never reads as stress.
-export const ISLAND_COLORS = ["#1cae6d", "#3eb3fe", "#082b54", "#71ca7d", "#8ea7c4", "#0a7f9e", "#5c4fc4", "#2f6e3f", "#c28a2c", "#b04f8f"];
 
 const M_LAT = 110_540;
 const M_LON = 111_320 * Math.cos((38.9 * Math.PI) / 180);

@@ -1,28 +1,28 @@
 "use client";
-/* eslint-disable react-hooks/refs -- map/ride refs are only read in effects and event handlers; the rule flags the ctx object passed to children (false positive, 2026-10-01). */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import type * as maplibregl from "maplibre-gl";
-import { loadNet, loadExtras, nearestNode, edgeMid, RIDERS, type Net, type Extras, type Rider } from "@/lib/engine/net";
-import { islands, routePair, routeLine, rideable } from "@/lib/engine/graph";
-import {
-  createMap, addLayers, applyBasemapTheme, applyPaint, applyIslands, setExtras as mapSetExtras, setPois, setSelected,
-  setVisible, setData, riseWalls, DC_VIEW, type Mode,
-} from "@/lib/engine/map";
+import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
+import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
+import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setVisible, setData, riseWalls, DC_VIEW } from "@/lib/engine/map";
 import { lineFC, pointsFC, EMPTY_FC, wallFootprints } from "@/lib/engine/geom";
 import { enablePhotoreal, type PhotorealHandle } from "@/lib/engine/photoreal";
-import { PhotorealCredits } from "./PhotorealCredits";
+import { createStreetView, type StreetViewHandle } from "@/lib/engine/streetview";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
-import type { AppCtx } from "./types";
+import type { Routes, View } from "./types";
 import { Header } from "./Header";
-import { Panel } from "./Panel";
+import { TripPanel } from "./TripPanel";
 import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
+import { PhotorealCredits } from "./PhotorealCredits";
 
-const MODES: Mode[] = ["explore", "islands", "build", "ride"];
-const TILES_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
-const RIDER_KEYS = Object.keys(RIDERS) as Rider[];
+const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
+const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
+  ? [{ value: "photoreal", label: "Photoreal" }, { value: "street", label: "Street View" }, { value: "model", label: "3D model" }]
+  : [{ value: "model", label: "3D model" }];
+const STREET_MAX_MPS = 22; // Street View hops photo to photo; faster than this and it can't keep up
+const MAP_LAYERS = ["rs-walls", "rs-buildings", "rs-streets", "rs-route", "rs-route-casing", "rs-route-fast", "rs-break", "rs-rider", "rs-ends"];
 
 function readUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -32,62 +32,48 @@ function readUrl() {
     const X = Number(x), Y = Number(y);
     return Number.isFinite(X) && Number.isFinite(Y) ? { x: X, y: Y, label: rest.join(",") || "Dropped pin" } : null;
   };
-  const mode = p.get("mode") as Mode; const rider = p.get("rider") as Rider;
-  return {
-    mode: MODES.includes(mode) ? mode : "explore",
-    rider: RIDER_KEYS.includes(rider) ? rider : "casual",
-    fixed: new Set((p.get("fix") || "").split(",").filter(Boolean).map(Number).filter((n) => Number.isInteger(n) && n >= 0)),
-    sel: p.get("b") !== null && p.get("b") !== "" ? Number(p.get("b")) : null,
-    from: place("from"), to: place("to"), focus: place("at"),
-  };
+  return { from: place("from"), to: place("to") };
 }
 
 export default function MapApp() {
   const mapEl = useRef<HTMLDivElement>(null);
+  const streetEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [net, setNet] = useState<Net | null>(null);
-  const [extras, setExtras] = useState<Extras | null>(null);
+  const [pois, setPois] = useState<Poi[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
 
   const [init] = useState(() => (typeof window === "undefined" ? null : readUrl()));
-  const [mode, setModeRaw] = useState<Mode>(init?.mode ?? "explore");
-  const [rider, setRider] = useState<Rider>(init?.rider ?? "casual");
-  const [fixed, setFixed] = useState<Set<number>>(init?.fixed ?? new Set());
-  const [selEdge, setSelEdge] = useState<number | null>(init?.sel ?? null);
-  const [flat, setFlat] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
-  const [showCrashes, setShowCrashes] = useState(false);
-  const [focus, setFocus] = useState<Place | null>(init?.focus ?? null);
   const [from, setFrom] = useState<Place | null>(init?.from ?? null);
   const [to, setTo] = useState<Place | null>(init?.to ?? null);
-  const [pick, setPick] = useState<AppCtx["pick"]>(null);
+  const [pick, setPick] = useState<"from" | "to" | null>(null);
+  const [view, setView] = useState<View>(VIEWS[0].value);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
   const [ridePlaying, setRidePlaying] = useState(false);
   const [riding, setRiding] = useState(false);
-  const [photoreal, setPhotoreal] = useState(false);
   const [credits, setCredits] = useState("");
-  const photoRef = useRef<PhotorealHandle | null>(null);
+  const [noPhotos, setNoPhotos] = useState(false);
   const rideRef = useRef<Ride | null>(null);
+  const photoRef = useRef<PhotorealHandle | null>(null);
+  const streetRef = useRef<StreetViewHandle | null>(null);
   const wallScale = useRef(0);
   const layersAdded = useRef(false);
-  const prevSel = useRef<number | null>(null);
 
-  const threshold = RIDERS[rider].lts;
-  const toast = useCallback((m: string) => { setToastMsg(m); window.setTimeout(() => setToastMsg((cur) => (cur === m ? null : cur)), 3500); }, []);
+  const toast = useCallback((m: string) => { setToastMsg(m); window.setTimeout(() => setToastMsg((c) => (c === m ? null : c)), 3500); }, []);
 
-  // ---------- data ----------
+  // ---------- data + map ----------
   useEffect(() => {
     let live = true;
     loadNet().then((n) => live && setNet(n)).catch((e) => live && setLoadError(String(e.message || e)));
-    loadExtras().then((x) => live && setExtras(x)).catch(() => live && toast("Some details (crashes, schools) failed to load. The map still works."));
+    loadPois().then((x) => live && setPois(x)).catch(() => { /* search still works through the geocoder */ });
     return () => { live = false; };
-  }, [attempt, toast]);
+  }, [attempt]);
 
-  // ---------- map ----------
   useEffect(() => {
     if (!mapEl.current || mapRef.current) return;
     const map = createMap(mapEl.current, { flat: window.matchMedia("(max-width: 767px)").matches });
@@ -96,248 +82,181 @@ export default function MapApp() {
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
-  const is = useMemo(() => (net ? islands(net, threshold, fixed) : null), [net, threshold, fixed]);
-  const focusNode = useMemo(() => (net && focus ? nearestNode(net, focus.x, focus.y, 800) : -1), [net, focus]);
-
-  const paint = useCallback(() => {
-    const map = mapRef.current;
-    if (!map || !layersAdded.current || !is) return;
-    const focusRoot = mode === "islands" && focusNode >= 0 ? is.comp[focusNode] : null;
-    applyPaint(map, { mode, threshold, wallScale: wallScale.current, dark, focusRoot });
-  }, [mode, threshold, dark, is, focusNode]);
-
-  // layers once map + network are ready
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapReady || !net || !is || layersAdded.current) return;
-    addLayers(map, net, null);
-    layersAdded.current = true;
-    applyBasemapTheme(map, dark);
-    applyIslands(map, net, is, threshold, fixed);
-    riseWalls((k) => {
-      wallScale.current = k;
-      applyPaint(map, { mode, threshold, wallScale: k, dark, focusRoot: null });
-    });
-  }, [mapReady, net, is, dark, mode, threshold, fixed]);
-
-  useEffect(() => { if (layersAdded.current && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [dark]);
-  useEffect(() => { paint(); }, [paint]);
-  useEffect(() => {
-    if (layersAdded.current && mapRef.current && net && is) applyIslands(mapRef.current, net, is, threshold, fixed);
-  }, [is, net, threshold, fixed]);
-  useEffect(() => { if (layersAdded.current && mapRef.current && extras) mapSetExtras(mapRef.current, extras); }, [extras, mapReady, net]);
-
-  useEffect(() => {
-    const map = mapRef.current; if (!map || !layersAdded.current) return;
-    setVisible(map, "rs-crashes", showCrashes);
-    setVisible(map, "rs-wards", mode === "islands");
-    setVisible(map, "rs-pois", mode === "islands");
-  }, [showCrashes, mode, mapReady, net]);
-
-  useEffect(() => {
-    const map = mapRef.current; if (!map || !layersAdded.current || !extras || !is) return;
-    const root = focusNode >= 0 ? is.comp[focusNode] : is.ranked[0];
-    setPois(map, extras.pois, (p) => is.comp[p.node] === root);
-  }, [extras, is, focusNode, mapReady, net]);
-
-  useEffect(() => {
-    const map = mapRef.current; if (!map || !layersAdded.current) return;
-    setSelected(map, prevSel.current, selEdge);
-    prevSel.current = selEdge;
-  }, [selEdge, mapReady, net]);
-
-  useEffect(() => {
-    const map = mapRef.current; if (!map || !mapReady) return;
-    map.easeTo({ pitch: flat ? 0 : DC_VIEW.pitch, duration: 700 });
-  }, [flat, mapReady]);
-
-  // ---------- routes ----------
-  const routes = useMemo(() => {
+  // ---------- route ----------
+  const routes: Routes = useMemo(() => {
     if (!net || !from || !to) return null;
     const a = nearestNode(net, from.x, from.y, 800), b = nearestNode(net, to.x, to.y, 800);
-    if (a < 0 || b < 0) return { error: "far" as const };
-    if (a === b) return { error: "same" as const };
-    const pair = routePair(net, a, b, threshold, fixed);
-    if (!pair.calm || !pair.fastest) return { error: "none" as const };
-    return { a, b, ...pair, calm: pair.calm, fastest: pair.fastest };
-  }, [net, from, to, threshold, fixed]);
+    if (a < 0 || b < 0) return { error: "far" };
+    if (a === b) return { error: "same" };
+    const pair = routePair(net, a, b, COMMUTER_LTS);
+    if (!pair.calm || !pair.fastest) return { error: "none" };
+    return { a, b, calm: pair.calm, fastest: pair.fastest };
+  }, [net, from, to]);
+  const ok = routes && "calm" in routes ? routes : null;
+  const stretches = useMemo(() => (net && ok ? toStretches(net, ok.calm, (e) => edgeName(net, e)) : []), [net, ok]);
+  const line = useMemo(() => (net && ok ? routeLine(net, ok.calm) : null), [net, ok]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !net || layersAdded.current) return;
+    addLayers(map, net);
+    layersAdded.current = true;
+    applyBasemapTheme(map, dark);
+    riseWalls((k) => { wallScale.current = k; applyPaint(map, { wallScale: k, hasRoute: false }); });
+  }, [mapReady, net, dark]);
+  useEffect(() => { if (layersAdded.current && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [dark]);
 
   useEffect(() => {
     const map = mapRef.current; if (!map || !layersAdded.current || !net) return;
-    const show = mode === "ride";
-    const ends = [from, to].filter(Boolean) as Place[];
-    setData(map, "rs-ends", show ? pointsFC(ends) : EMPTY_FC);
-    if (show && routes && "calm" in routes) {
-      setData(map, "rs-route", lineFC(routeLine(net, routes.calm).coords));
-      const sameAsCalm = routes.fastest.edges.join() === routes.calm.edges.join();
-      setData(map, "rs-route-fast", sameAsCalm ? EMPTY_FC : lineFC(routeLine(net, routes.fastest).coords));
-      setData(map, "rs-break", {
-        type: "FeatureCollection",
-        features: routes.calm.breaking.map((e) => {
-          const c = net.ecoords[e]; const coords: [number, number][] = [];
-          for (let k = 0; k < c.length; k += 2) coords.push([c[k], c[k + 1]]);
-          return { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } };
-        }),
-      });
+    applyPaint(map, { wallScale: wallScale.current || 1, hasRoute: !!ok });
+    setData(map, "rs-ends", pointsFC([from, to].filter(Boolean) as Place[]));
+    if (ok && line) {
+      setData(map, "rs-route", lineFC(line.coords));
+      setRouteGradient(map, stretches.map((s) => ({ at: s.startM / ok.calm.lengthM, lts: s.lts })));
+      const same = ok.fastest.edges.join() === ok.calm.edges.join();
+      setData(map, "rs-route-fast", same ? EMPTY_FC : lineFC(routeLine(net, ok.fastest).coords));
+      setData(map, "rs-break", { type: "FeatureCollection", features: stretches.filter((s) => s.lts === 4).flatMap((s) => s.edges).map((e) => {
+        const c = net.ecoords[e]; const coords: [number, number][] = [];
+        for (let k = 0; k < c.length; k += 2) coords.push([c[k], c[k + 1]]);
+        return { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } };
+      }) });
     } else {
       for (const id of ["rs-route", "rs-route-fast", "rs-break"]) setData(map, id, EMPTY_FC);
     }
-  }, [routes, mode, from, to, net, mapReady]);
+  }, [ok, line, stretches, from, to, net, mapReady]);
 
-  // fit both ends when a new trip is set
-  const routeKey = routes && "calm" in routes ? `${routes.a}-${routes.b}` : "";
+  const routeKey = ok ? `${ok.a}-${ok.b}` : "";
   useEffect(() => {
-    const map = mapRef.current; if (!map || !net || !routeKey || !from || !to || rideRef.current) return;
+    const map = mapRef.current; if (!map || !routeKey || !from || !to || rideRef.current) return;
     map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]],
-      { padding: window.innerWidth < 768 ? { top: 80, bottom: window.innerHeight * 0.5, left: 40, right: 40 } : { top: 80, bottom: 80, left: 480, right: 80 }, duration: 900, maxZoom: 15 });
+      { padding: window.innerWidth < 768 ? { top: 60, bottom: window.innerHeight * 0.5, left: 40, right: 40 } : { top: 80, bottom: 80, left: 480, right: 80 }, duration: 900, maxZoom: 15.5 });
   }, [routeKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---------- photoreal (Google 3D tiles, loaded only when switched on) ----------
+  useEffect(() => {
+    const p = new URLSearchParams();
+    const enc = (pl: Place) => `${pl.x.toFixed(5)},${pl.y.toFixed(5)},${pl.label}`;
+    if (from) p.set("from", enc(from));
+    if (to) p.set("to", enc(to));
+    const q = p.toString();
+    window.history.replaceState(null, "", q ? `${window.location.pathname}?${q}` : window.location.pathname);
+  }, [from, to]);
+
+  // ---------- ride views ----------
   const walls = useMemo(() => (net ? wallFootprints(net) : null), [net]);
-  const [photoTick, setPhotoTick] = useState(0); // bumps when the photoreal handle becomes ready
+
+  // Photoreal: Google 3D tiles only while riding in that view (one billed session per load).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady || !photoreal || !TILES_KEY) return;
+    if (!map || !riding || view !== "photoreal" || !GOOGLE_KEY || !net || !walls) return;
     let cancelled = false;
-    const hide = (on: boolean) => ["rs-walls", "rs-buildings", "rs-streets", "rs-route", "rs-route-casing", "rs-route-fast", "rs-break", "rs-rider"]
-      .forEach((id) => setVisible(map, id, !on));
-    hide(true);
-    enablePhotoreal(map, TILES_KEY, setCredits, (msg) => { toast(msg); setPhotoreal(false); })
-      .then((h) => { if (cancelled) h.destroy(); else { photoRef.current = h; setPhotoTick((t) => t + 1); } })
-      .catch(() => { toast("The photoreal view could not load. Showing the standard map."); setPhotoreal(false); });
+    MAP_LAYERS.forEach((id) => setVisible(map, id, false));
+    enablePhotoreal(map, GOOGLE_KEY, setCredits, (msg) => { toast(msg); setView("model"); })
+      .then((h) => {
+        if (cancelled) { h.destroy(); return; }
+        photoRef.current = h;
+        h.setRoute(line?.coords ?? null);
+        h.setWalls({ type: "FeatureCollection", features: walls.features.filter((f) => net.elts[Number(f.id)] >= 3) }); // stressful and hostile only
+      })
+      .catch(() => { toast("The photoreal view could not load. Showing the 3D model."); setView("model"); });
     return () => {
       cancelled = true;
       photoRef.current?.destroy(); photoRef.current = null;
-      setCredits(""); hide(false);
+      setCredits("");
+      MAP_LAYERS.forEach((id) => setVisible(map, id, true));
     };
-  }, [photoreal, mapReady, toast]);
+  }, [riding, view, net, walls, line, toast]);
+
+  // Street View: real photos, one panorama load per ride, moved along with the rider.
   useEffect(() => {
-    const h = photoRef.current; if (!h || !net || !walls) return;
-    h.setRoute(routes && "calm" in routes ? routeLine(net, routes.calm).coords : null);
-    h.setWalls({ type: "FeatureCollection", features: walls.features.filter((f) => {
-      const e = Number(f.id); return net.elts[e] > threshold && !fixed.has(e);
-    }) });
-  }, [photoTick, routes, net, walls, threshold, fixed]);
-
-  // ---------- URL state ----------
-  useEffect(() => {
-    const p = new URLSearchParams();
-    p.set("mode", mode); p.set("rider", rider);
-    if (fixed.size) p.set("fix", [...fixed].join(","));
-    if (selEdge !== null && mode === "explore") p.set("b", String(selEdge));
-    const enc = (pl: Place) => `${pl.x.toFixed(5)},${pl.y.toFixed(5)},${pl.label}`;
-    if (focus && mode === "islands") p.set("at", enc(focus));
-    if (from && mode === "ride") p.set("from", enc(from));
-    if (to && mode === "ride") p.set("to", enc(to));
-    window.history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
-  }, [mode, rider, fixed, selEdge, focus, from, to]);
-
-  // ---------- actions ----------
-  const flyTo = useCallback((x: number, y: number, zoom = 15) => {
-    const narrow = window.innerWidth < 768;
-    mapRef.current?.flyTo({ center: [x, y], zoom, pitch: flat ? 0 : 55, padding: narrow ? { bottom: window.innerHeight * 0.45, top: 0, left: 0, right: 0 } : { left: 440, top: 0, right: 0, bottom: 0 }, duration: 1200 });
-  }, [flat]);
-  const flyToEdge = useCallback((e: number) => { if (net) { const [x, y] = edgeMid(net, e); flyTo(x, y, 16); } }, [net, flyTo]);
-
-  const toggleFix = useCallback((e: number) => {
-    setFixed((s) => { const n = new Set(s); if (n.has(e)) n.delete(e); else n.add(e); return n; });
-  }, []);
-  const addFixes = useCallback((es: number[]) => setFixed((s) => new Set([...s, ...es])), []);
-  const clearFixes = useCallback(() => setFixed(new Set()), []);
-
-  const setMode = useCallback((m: Mode) => {
-    setModeRaw(m); setPick(null);
-    if (m !== "explore") setSelEdge(null);
-  }, []);
+    const el = streetEl.current;
+    if (!el || !riding || view !== "street" || !GOOGLE_KEY || !line) return;
+    let cancelled = false;
+    const f = rideRef.current?.current;
+    createStreetView(el, GOOGLE_KEY, f?.pos ?? line.coords[0], f?.heading ?? 0, (has) => setNoPhotos(!has))
+      .then((h) => { if (cancelled) h.destroy(); else streetRef.current = h; })
+      .catch(() => { toast("Street View could not load. Showing the 3D model."); setView("model"); });
+    if (rideRef.current) rideRef.current.maxMps = STREET_MAX_MPS;
+    return () => {
+      cancelled = true;
+      streetRef.current?.destroy(); streetRef.current = null;
+      setNoPhotos(false);
+      if (rideRef.current) rideRef.current.maxMps = Infinity;
+    };
+  }, [riding, view, line, toast]);
 
   const stopRide = useCallback(() => {
-    rideRef.current?.stop(); rideRef.current = null; setRideFrame(null); setRidePlaying(false); setRiding(false);
+    rideRef.current?.stop(); rideRef.current = null;
+    setRideFrame(null); setRidePlaying(false); setRiding(false);
     const map = mapRef.current;
-    if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: flat ? 0 : DC_VIEW.pitch, duration: 1000 });
-  }, [from, to, flat]);
+    if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: DC_VIEW.pitch, duration: 1000 });
+  }, [from, to]);
 
   const startRide = useCallback(() => {
     const map = mapRef.current;
-    if (!map || !net || !routes || !("calm" in routes)) return;
-    const { coords, segEdge } = routeLine(net, routes.calm);
+    if (!map || !line) return;
     rideRef.current?.stop();
-    const r = new Ride(map, coords, segEdge, (f) => { setRideFrame(f); photoRef.current?.setRider(f.pos); }, () => setRidePlaying(false));
+    const r = new Ride(map, line.coords, line.segEdge, (f) => {
+      setRideFrame(f);
+      photoRef.current?.setRider(f.pos);
+      streetRef.current?.follow(f.pos, f.heading);
+    }, () => setRidePlaying(false));
+    if (view === "street") r.maxMps = STREET_MAX_MPS;
     rideRef.current = r;
-    setRiding(true);
-    setRidePlaying(true);
-    map.flyTo({ center: coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
+    setRiding(true); setRidePlaying(true);
+    map.flyTo({ center: line.coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
     window.setTimeout(() => { if (rideRef.current === r) r.play(); }, 1550);
-  }, [net, routes]);
+  }, [line, view]);
 
-  // ---------- map clicks ----------
+  const flyToStretch = useCallback((s: Stretch) => {
+    if (!net) return;
+    const [x, y] = edgeMid(net, s.edges[Math.floor(s.edges.length / 2)]);
+    mapRef.current?.flyTo({ center: [x, y], zoom: 16.5, pitch: 62, duration: 1200,
+      padding: window.innerWidth < 768 ? { bottom: window.innerHeight * 0.45, top: 0, left: 0, right: 0 } : { left: 440, top: 0, right: 0, bottom: 0 } });
+  }, [net]);
+
+  // ---------- map clicks: first click sets the start, second the destination ----------
   const clickRef = useRef<(e: maplibregl.MapMouseEvent) => void>(() => {});
-  const pickRefMode = useRef(false);
-  const handleClick = (ev: maplibregl.MapMouseEvent) => {
-    const map = mapRef.current; if (!map || !net || rideRef.current) return;
-    const { lng: x, lat: y } = ev.lngLat;
-    const pinLabel = "Dropped pin";
-    if (pick === "from" || (mode === "ride" && !pick && !from)) { setFrom({ x, y, label: pinLabel }); setPick(pick === "from" && !to ? "to" : null); return; }
-    if (pick === "to" || (mode === "ride" && !pick && !to)) { setTo({ x, y, label: pinLabel }); setPick(null); return; }
-    if (pick === "focus" || mode === "islands") { setFocus({ x, y, label: pinLabel }); setPick(null); return; }
-    const p = ev.point;
-    const feats = map.queryRenderedFeatures([[p.x - 6, p.y - 6], [p.x + 6, p.y + 6]], { layers: ["rs-walls", "rs-streets"] });
-    const e = feats.length ? Number(feats[0].id) : -1;
-    if (mode === "explore") { setSelEdge(e >= 0 ? e : null); return; }
-    if (mode === "build" && e >= 0) {
-      if (net.elts[e] <= threshold && !fixed.has(e)) { toast(`That street is already comfortable for a ${RIDERS[rider].label.toLowerCase()} rider.`); return; }
-      toggleFix(e);
-    }
-  };
   useEffect(() => {
-    clickRef.current = handleClick;
-    pickRefMode.current = !!pick || mode === "ride" || mode === "islands";
+    clickRef.current = (ev) => {
+      if (rideRef.current) return;
+      const pin: Place = { x: ev.lngLat.lng, y: ev.lngLat.lat, label: "Dropped pin" };
+      if (pick === "from" || (!pick && !from)) { setFrom(pin); setPick(null); return; }
+      if (pick === "to" || (!pick && !to)) { setTo(pin); setPick(null); }
+    };
   });
   useEffect(() => {
     const map = mapRef.current; if (!map || !mapReady) return;
     const onClick = (e: maplibregl.MapMouseEvent) => clickRef.current(e);
-    const onMove = (e: maplibregl.MapMouseEvent) => {
-      if (!layersAdded.current) return;
-      const f = map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ["rs-walls", "rs-streets"] });
-      map.getCanvas().style.cursor = f.length || pickRefMode.current ? "pointer" : "";
-    };
-    map.on("click", onClick); map.on("mousemove", onMove);
-    return () => { map.off("click", onClick); map.off("mousemove", onMove); };
+    map.on("click", onClick);
+    return () => { map.off("click", onClick); };
   }, [mapReady]);
-
-  const ctx = useMemo<AppCtx | null>(() => (net && is ? {
-    net, extras, mode, setMode, rider, threshold, fixed, toggleFix, addFixes, clearFixes, is,
-    selEdge, setSelEdge, flat, setFlat, showCrashes, setShowCrashes,
-    focus, setFocus, focusNode, from, to, setFrom, setTo, pick, setPick, flyTo, flyToEdge, startRide, toast,
-    photorealAvailable: !!TILES_KEY, photoreal, setPhotoreal,
-  } : null), [net, extras, mode, setMode, rider, threshold, fixed, toggleFix, addFixes, clearFixes, is, selEdge, flat, showCrashes,
-    focus, focusNode, from, to, pick, flyTo, flyToEdge, startRide, toast, photoreal]);
 
   return (
     <div className="fixed inset-0 flex flex-col bg-paper">
-      <Header mode={mode} setMode={setMode} />
+      <Header />
       <div className="relative flex-1 overflow-hidden">
-        <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label="Map of Washington, DC streets colored by bike stress" role="region" /></div>
-        {!ctx && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
-        {ctx && !rideFrame && (
-          <Panel ctx={ctx} setRider={setRider} routes={routes} />
+        <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label="3D map of Washington, DC streets colored by bike stress" role="region" /></div>
+        <div ref={streetEl} className={riding && view === "street" ? "absolute inset-0 z-[5]" : "hidden"} aria-label="Street View along the route" />
+        {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
+        {net && !riding && (
+          <TripPanel pois={pois} routes={routes} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
+            setPick={setPick} view={view} setView={setView} views={VIEWS} onRide={startRide} onFlyTo={flyToStretch} />
         )}
-        {ctx && rideFrame && riding && (
-          <RideHud net={ctx.net} frame={rideFrame} playing={ridePlaying} rider={rider} fixed={fixed}
+        {net && riding && rideFrame && (
+          <RideHud net={net} frame={rideFrame} playing={ridePlaying} view={view} views={VIEWS} onView={setView} noPhotos={noPhotos}
             onPlayPause={() => { const r = rideRef.current; if (!r) return; if (r.playing) { r.pause(); setRidePlaying(false); } else { r.play(); setRidePlaying(true); } }}
             onSeek={(f) => rideRef.current?.seek(f)}
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
-            onExit={stopRide}
-            photoreal={photoreal} onPhotoreal={TILES_KEY ? () => setPhotoreal((v) => !v) : undefined}
-            isRideable={(e) => rideable(ctx.net, e, threshold, fixed)} />
+            onExit={stopRide} />
         )}
-        {photoreal && <PhotorealCredits credits={credits} />}
+        {riding && view === "photoreal" && <PhotorealCredits credits={credits} />}
         {pick && (
-          <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.8rem] font-semibold text-primary-ink shadow-panel">
-            {pick === "from" ? "Click the map to set your start" : pick === "to" ? "Click the map to set your destination" : "Click the map to pick a home"}
+          <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.85rem] font-semibold text-primary-ink shadow-panel">
+            {pick === "from" ? "Click the map to set your start" : "Click the map to set your destination"}
           </div>
         )}
         {toastMsg && (
-          <div role="status" className="absolute bottom-6 left-1/2 z-30 max-w-[90%] -translate-x-1/2 rounded-full bg-primary px-5 py-2.5 text-[0.8rem] font-semibold text-primary-ink shadow-panel md:bottom-8">
+          <div role="status" className="absolute bottom-6 left-1/2 z-30 max-w-[90%] -translate-x-1/2 rounded-full bg-primary px-5 py-2.5 text-[0.85rem] font-semibold text-primary-ink shadow-panel md:bottom-8">
             {toastMsg}
           </div>
         )}

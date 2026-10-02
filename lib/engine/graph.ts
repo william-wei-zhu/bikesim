@@ -1,87 +1,9 @@
-// Islands (low-stress connected components), routing and reachability. Pure functions over Net.
-import type { Net, Poi, PoiType } from "./net";
+// Routing over the street network. Pure functions over Net.
+import type { Net } from "./net";
 
-/** An edge is rideable for a rider if its LTS is within their comfort, or the user "fixed" it. */
-export function rideable(net: Net, e: number, threshold: number, fixed: Set<number>) {
-  return net.elts[e] <= threshold || fixed.has(e);
-}
-
-export interface Islands {
-  comp: Int32Array;          // node -> component root
-  compPop: Map<number, number>;
-  ranked: number[];          // component roots by population, desc (only populated ones)
-  rankOf: Map<number, number>;
-  largestPop: number;
-  totalPop: number;
-}
-
-export function islands(net: Net, threshold: number, fixed: Set<number>): Islands {
-  const parent = new Int32Array(net.nNodes);
-  for (let i = 0; i < net.nNodes; i++) parent[i] = i;
-  const find = (a: number) => {
-    let r = a;
-    while (parent[r] !== r) r = parent[r];
-    while (parent[a] !== r) { const nx = parent[a]; parent[a] = r; a = nx; }
-    return r;
-  };
-  for (let e = 0; e < net.nEdges; e++) {
-    if (!rideable(net, e, threshold, fixed)) continue;
-    const a = find(net.eu[e]), b = find(net.ev[e]);
-    if (a !== b) parent[b] = a;
-  }
-  const comp = new Int32Array(net.nNodes);
-  const compPop = new Map<number, number>();
-  for (let n = 0; n < net.nNodes; n++) {
-    const r = find(n);
-    comp[n] = r;
-    if (net.pop[n]) compPop.set(r, (compPop.get(r) || 0) + net.pop[n]);
-  }
-  const ranked = [...compPop.keys()].sort((a, b) => compPop.get(b)! - compPop.get(a)!);
-  const rankOf = new Map(ranked.map((r, i) => [r, i]));
-  return { comp, compPop, ranked, rankOf, largestPop: compPop.get(ranked[0]) || 0, totalPop: net.totalPop };
-}
-
-/** Residents who are not on the largest island. */
-export function stranded(is: Islands) {
-  return is.totalPop - is.largestPop;
-}
-
-/** Per ward: share of that ward's residents who are on the city's largest island. */
-export function wardShares(net: Net, is: Islands) {
-  const top = is.ranked[0];
-  const tot = new Map<number, number>(), on = new Map<number, number>();
-  for (let n = 0; n < net.nNodes; n++) {
-    const p = net.pop[n];
-    if (!p) continue;
-    const w = net.ward[n];
-    tot.set(w, (tot.get(w) || 0) + p);
-    if (is.comp[n] === top) on.set(w, (on.get(w) || 0) + p);
-  }
-  return [1, 2, 3, 4, 5, 6, 7, 8].map((w) => ({ ward: w, pop: tot.get(w) || 0, share: (on.get(w) || 0) / (tot.get(w) || 1) }));
-}
-
-/** What a rider starting at `node` can reach without riding a stressful street. */
-export function reach(net: Net, is: Islands, node: number, pois: Poi[]) {
-  const root = is.comp[node];
-  const counts: Record<PoiType, number> = { school: 0, library: 0, metro: 0, rec: 0 };
-  const names: Record<PoiType, string[]> = { school: [], library: [], metro: [], rec: [] };
-  for (const p of pois) {
-    if (is.comp[p.node] === root) { counts[p.t]++; if (names[p.t].length < 50) names[p.t].push(p.n); }
-  }
-  return { root, residents: is.compPop.get(root) || 0, counts, names };
-}
-
-/** Changes a plan of fixes makes for one rider, against the no-fix baseline. */
-export function planImpact(net: Net, threshold: number, fixed: Set<number>, pois: Poi[]) {
-  const before = islands(net, threshold, new Set());
-  const after = islands(net, threshold, fixed);
-  const schoolsOn = (is: Islands) => pois.filter((p) => p.t === "school" && is.comp[p.node] === is.ranked[0]).length;
-  return {
-    before, after,
-    residentsJoined: after.largestPop - before.largestPop,
-    schoolsJoined: schoolsOn(after) - schoolsOn(before),
-    km: [...fixed].reduce((s, e) => s + net.elen[e], 0) / 1000,
-  };
+/** An edge is comfortable for the rider if its LTS is within their threshold. */
+export function rideable(net: Net, e: number, threshold: number) {
+  return net.elts[e] <= threshold;
 }
 
 // ---------- Routing ----------
@@ -114,7 +36,7 @@ class Heap {
 export interface Route { nodes: number[]; edges: number[]; lengthM: number; byLts: number[]; breaking: number[] }
 
 /** Dijkstra from a to b. cost(e) returns metres-equivalent cost, or Infinity to forbid. */
-export function shortest(net: Net, a: number, b: number, cost: (e: number) => number, threshold: number, fixed: Set<number>): Route | null {
+export function shortest(net: Net, a: number, b: number, cost: (e: number) => number, threshold: number): Route | null {
   const dist = new Float64Array(net.nNodes).fill(Infinity);
   const prevE = new Int32Array(net.nNodes).fill(-1);
   const h = new Heap();
@@ -145,20 +67,20 @@ export function shortest(net: Net, a: number, b: number, cost: (e: number) => nu
   const breaking: number[] = [];
   for (const e of edges) {
     const L = net.elen[e]; lengthM += L;
-    const lts = fixed.has(e) ? 1 : net.elts[e];
+    const lts = net.elts[e];
     byLts[lts] += L;
-    if (!rideable(net, e, threshold, fixed)) breaking.push(e);
+    if (!rideable(net, e, threshold)) breaking.push(e);
   }
   return { nodes, edges, lengthM, byLts, breaking };
 }
 
 /** Fastest route (shortest distance on any street) and the calmest route for this rider.
  * The calm route strongly avoids streets above the rider's comfort; if it still needs some,
- * those are the "breaking" blocks that a fix would open. */
-export function routePair(net: Net, a: number, b: number, threshold: number, fixed: Set<number>) {
-  const fastest = shortest(net, a, b, (e) => net.elen[e], threshold, fixed);
+ * those are the hostile stretches the rider cannot avoid. */
+export function routePair(net: Net, a: number, b: number, threshold: number) {
+  const fastest = shortest(net, a, b, (e) => net.elen[e], threshold);
   const PENALTY = 25;
-  const calm = shortest(net, a, b, (e) => net.elen[e] * (rideable(net, e, threshold, fixed) ? 1 : PENALTY), threshold, fixed);
+  const calm = shortest(net, a, b, (e) => net.elen[e] * (rideable(net, e, threshold) ? 1 : PENALTY), threshold);
   return { fastest, calm };
 }
 
@@ -179,4 +101,20 @@ export function routeLine(net: Net, r: Route): { coords: [number, number][]; seg
     }
   });
   return { coords, segEdge };
+}
+
+export interface Stretch { lts: number; name: string; startM: number; lengthM: number; edges: number[] }
+
+/** Consecutive edges with the same stress level and street, in travel order. */
+export function stretches(net: Net, r: Route, nameOf: (e: number) => string): Stretch[] {
+  const out: Stretch[] = [];
+  let at = 0;
+  for (const e of r.edges) {
+    const lts = net.elts[e], name = nameOf(e), L = net.elen[e];
+    const last = out[out.length - 1];
+    if (last && last.lts === lts && last.name === name) { last.lengthM += L; last.edges.push(e); }
+    else out.push({ lts, name, startM: at, lengthM: L, edges: [e] });
+    at += L;
+  }
+  return out;
 }

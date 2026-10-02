@@ -3,14 +3,9 @@
 
 export type PoiType = "school" | "library" | "metro" | "rec";
 export interface Poi { t: PoiType; n: string; x: number; y: number; node: number; d: number }
-export interface Fix { e: number; gain: number }
-export type Rider = "kid" | "casual" | "commuter";
 
-export const RIDERS: Record<Rider, { lts: number; label: string; blurb: string }> = {
-  kid: { lts: 1, label: "Kid", blurb: "A 10-year-old riding alone: trails, protected lanes and the quietest streets only." },
-  casual: { lts: 2, label: "Casual", blurb: "Most adults: quiet streets and bike lanes, nothing fast or wide." },
-  commuter: { lts: 3, label: "Commuter", blurb: "A confident rider who tolerates some traffic, but not highways in disguise." },
-};
+/** RideSim simulates a confident everyday commuter: comfortable up to LTS 3, avoids hostile LTS 4 streets. */
+export const COMMUTER_LTS = 3;
 
 export const LTS_INFO = [
   null,
@@ -19,21 +14,6 @@ export const LTS_INFO = [
   { name: "Stressful", who: "Only for confident riders" },
   { name: "Hostile", who: "Only the most experienced riders" },
 ] as const;
-
-export const SRC_LABEL: Record<string, string> = {
-  ridescore_v1: "RideScore DC score for this block",
-  track_rule: "Separate bike track (RideSim rule: treated as calm instead of copying the road beside it)",
-  trail_rule: "Trail or path not in DDOT records (RideSim rule: treated as calm)",
-  osm_class_rule: "No DDOT match (RideSim estimate from the OpenStreetMap road class)",
-  footway_rule: "Sidewalk-type path (RideSim estimate)",
-};
-
-export interface Block {
-  segment_id: string; route_name: string | null; function: string | null; num_lanes: number | null;
-  speed_limit: number | null; bike_facility_type: string; parking_presence: string | null; slow_street: unknown;
-  crash_count_5yr: number; serious_injury_count_5yr: number; fatal_count_5yr: number;
-  lts_level: number; ridescore_v1: number; speed_filled: boolean;
-}
 
 export interface Net {
   nNodes: number; nEdges: number;
@@ -45,11 +25,6 @@ export interface Net {
   adjStart: Int32Array; adjE: Int32Array; adjN: Int32Array;
   totalPop: number;
   grid: Grid;
-}
-
-export interface Extras {
-  blocks: Block[]; pois: Poi[]; crashes: [number, number, number, number][];
-  fixes: Record<Rider, Fix[]>; meta: Record<string, unknown>; wards: GeoJSON.FeatureCollection;
 }
 
 interface Grid { x0: number; y0: number; cell: number; nx: number; ny: number; cells: Map<number, number[]> }
@@ -98,17 +73,9 @@ export async function loadNet(base = "/data"): Promise<Net> {
   return net;
 }
 
-export async function loadExtras(base = "/data"): Promise<Extras> {
-  const [blk, pois, crashes, fixes, meta, wards] = await Promise.all([
-    getJson<{ cols: string[]; rows: unknown[][] }>(`${base}/blocks.json`),
-    getJson<Poi[]>(`${base}/pois.json`),
-    getJson<[number, number, number, number][]>(`${base}/crashes.json`),
-    getJson<Record<Rider, Fix[]>>(`${base}/fixes.json`),
-    getJson<Record<string, unknown>>(`${base}/meta.json`),
-    getJson<GeoJSON.FeatureCollection>(`${base}/wards.geojson`),
-  ]);
-  const blocks = blk.rows.map((r) => Object.fromEntries(blk.cols.map((c, i) => [c, r[i]])) as unknown as Block);
-  return { blocks, pois, crashes, fixes, meta, wards };
+/** Named DC places (schools, libraries, Metro, rec centers) for instant search suggestions. */
+export async function loadPois(base = "/data"): Promise<Poi[]> {
+  return getJson<Poi[]>(`${base}/pois.json`);
 }
 
 function buildGrid(net: Net) {

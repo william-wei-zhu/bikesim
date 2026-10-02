@@ -8,7 +8,6 @@ import type { View } from "./types";
 import { cn } from "@/lib/utils";
 
 const COLORS = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"];
-const EDGE_TINT = ["", "rgb(28 174 109 / 0.35)", "rgb(155 214 90 / 0.3)", "rgb(245 165 36 / 0.4)", "rgb(229 72 77 / 0.55)"];
 
 export function RideHud({ net, frame, playing, view, views, onView, onPlayPause, onSeek, onSpeed, onExit, noPhotos }: {
   net: Net; frame: RideFrame; playing: boolean; view: View; views: { value: View; label: string }[];
@@ -21,9 +20,6 @@ export function RideHud({ net, frame, playing, view, views, onView, onPlayPause,
   const lts = e >= 0 ? net.elts[e] : 1;
   return (
     <>
-      {/* Screen edges take on the stress of the street you're on. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-10 transition-[box-shadow] duration-700"
-        style={{ boxShadow: `inset 0 0 120px 30px ${EDGE_TINT[lts]}` }} />
       {noPhotos && view === "street" && (
         <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-primary px-5 py-2 text-[0.8rem] font-semibold text-primary-ink shadow-panel">
           No street photos on this stretch

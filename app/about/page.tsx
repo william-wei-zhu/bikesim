@@ -64,7 +64,7 @@ export default function AboutPage() {
         <p>
           <span className="font-semibold">Street View</span> follows your route through Google&apos;s real street photos, facing the way you ride.
           <span className="font-semibold"> 3D model</span> flies a rider through a white 3D model of DC, with every building at its real height.
-          In both, the screen edges and the stress meter change color as you ride from calm to hostile streets.
+          In both, the stress meter shows how stressful the street under you is as you ride.
         </p>
       </Section>
 

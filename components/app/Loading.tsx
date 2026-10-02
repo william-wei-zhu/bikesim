@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Btn } from "@/components/ui";
 
-const PHASES = ["Loading 28,121 DC street segments…", "Joining RideScore DC stress scores…", "Placing 689,545 residents…", "Raising the walls…"];
+const PHASES = ["Loading 28,121 DC street segments…", "Joining RideScore DC stress scores…", "Building DC in 3D…"];
 
 export function Loading({ error, onRetry }: { error: string | null; onRetry: () => void }) {
   const [i, setI] = useState(0);

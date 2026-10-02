@@ -1,7 +1,7 @@
 // MapLibre setup: logo-colored basemap, RideSim layers, and state -> paint updates.
 import * as maplibregl from "maplibre-gl";
 import type { Net } from "./net";
-import { streetLines, wallFootprints, EMPTY_FC, LTS_COLOR, LTS_HEIGHT } from "./geom";
+import { streetLines, EMPTY_FC, LTS_COLOR } from "./geom";
 
 // Opens over downtown and the Mall so the 3D city reads immediately (buildings appear from zoom 13).
 export const DC_VIEW = { center: [-77.0275, 38.8975] as [number, number], zoom: 13.4, pitch: 58, bearing: -22 };
@@ -14,7 +14,7 @@ export function createMap(container: HTMLElement, opts: { flat: boolean }) {
   const map = new maplibregl.Map({
     container, style: STYLE_URL, ...DC_VIEW, pitch: opts.flat ? 0 : DC_VIEW.pitch, maxPitch: 75,
     attributionControl: { compact: true }, maxBounds: [[-77.35, 38.70], [-76.75, 39.08]],
-    // antialias smooths wall and building edges; preserveDrawingBuffer only in dev so headless screenshots are reliable.
+    // antialias smooths building edges; preserveDrawingBuffer only in dev so headless screenshots are reliable.
     canvasContextAttributes: { antialias: true, preserveDrawingBuffer: process.env.NODE_ENV !== "production" },
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
@@ -66,7 +66,6 @@ export function applyBasemapTheme(map: maplibregl.Map, dark: boolean) {
 export function addLayers(map: maplibregl.Map, net: Net) {
   const firstLabel = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
   map.addSource("rs-streets", { type: "geojson", data: streetLines(net) });
-  map.addSource("rs-walls", { type: "geojson", data: wallFootprints(net) });
   map.addSource("rs-route-fast", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-route", { type: "geojson", data: EMPTY_FC, lineMetrics: true });
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });
@@ -90,10 +89,6 @@ export function addLayers(map: maplibregl.Map, net: Net) {
       "fill-extrusion-vertical-gradient": true,
     },
   });
-  map.addLayer({
-    id: "rs-walls", type: "fill-extrusion", source: "rs-walls",
-    paint: { "fill-extrusion-base": 0, "fill-extrusion-color": ltsColor as never, "fill-extrusion-vertical-gradient": true },
-  });
   map.addLayer({ id: "rs-route-fast", type: "line", source: "rs-route-fast", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#1d3f68", "line-width": 3, "line-dasharray": [1, 2], "line-opacity": 0.75 } });
   map.addLayer({ id: "rs-route-casing", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
@@ -103,16 +98,9 @@ export function addLayers(map: maplibregl.Map, net: Net) {
     paint: { "line-color": "#1cae6d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 5, 16, 10] } });
 }
 
-/** Stress view of the whole city; when a route is shown, everything else steps back so the route reads first. */
-export function applyPaint(map: maplibregl.Map, s: { wallScale: number; hasRoute: boolean }) {
-  map.setPaintProperty("rs-streets", "line-opacity", s.hasRoute ? 0.45 : 1);
-  map.setPaintProperty("rs-walls", "fill-extrusion-opacity", s.hasRoute ? 0.55 : 0.85);
-  const h = ["match", ["get", "lts"], 2, LTS_HEIGHT[2], 3, LTS_HEIGHT[3], 4, LTS_HEIGHT[4], 0];
-  // Tall at city scale (buildings hidden), about a quarter height at street level so walls sit
-  // between DC's buildings (height limit keeps most under 40 m) instead of burying them.
-  const wallH = ["*", h, s.wallScale];
-  map.setPaintProperty("rs-walls", "fill-extrusion-height",
-    ["interpolate", ["linear"], ["zoom"], 12.5, wallH, 15, ["*", wallH, 0.26]] as never);
+/** Stress view of the whole city; when a route is shown, the other streets step back so the route reads first. */
+export function applyPaint(map: maplibregl.Map, s: { hasRoute: boolean }) {
+  map.setPaintProperty("rs-streets", "line-opacity", s.hasRoute ? 0.4 : 0.9);
 }
 
 /** Color the route line by the stress of each stretch, using line-progress stops. */
@@ -133,18 +121,6 @@ export function setVisible(map: maplibregl.Map, id: string, on: boolean) {
 
 export function setData(map: maplibregl.Map, id: string, data: GeoJSON.FeatureCollection) {
   (map.getSource(id) as maplibregl.GeoJSONSource | undefined)?.setData(data);
-}
-
-/** Raise walls from 0 once (skipped when the user prefers reduced motion). */
-export function riseWalls(onFrame: (scale: number) => void, ms = 1600) {
-  if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { onFrame(1); return; }
-  const t0 = performance.now();
-  const step = (t: number) => {
-    const k = Math.min(1, (t - t0) / ms);
-    onFrame(1 - Math.pow(1 - k, 3));
-    if (k < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
 }
 
 // ---------- Start / End pins (DOM markers stay upright and crisp at any pitch) ----------

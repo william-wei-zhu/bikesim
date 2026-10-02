@@ -9,8 +9,8 @@
 - `lib/engine/` framework-free TypeScript (no React imports):
   - `net.ts` loads `/data/network.json` into typed arrays + CSR adjacency + grid index; `COMMUTER_LTS = 3` is the only rider.
   - `graph.ts` Dijkstra routing (`routePair`: shortest + lowest-stress with a 25x penalty on LTS 4; leftover LTS 4 edges are the unavoidable hostile stretches) and `stretches()` (route split by stress + street).
-  - `geom.ts` street lines and wall footprints built in the browser.
-  - `map.ts` MapLibre layers: stress-colored streets, LTS walls, white 3D buildings, route with a stress `line-gradient`.
+  - `geom.ts` street lines built in the browser.
+  - `map.ts` MapLibre layers: flat stress-colored streets, white 3D buildings, route with a stress `line-gradient`, Start/End pins.
   - `ride.ts` first-person fly-through; frames carry position + heading for the other views.
   - `streetview.ts` Google StreetViewPanorama that follows the rider (lazy).
 - `components/app/`: `MapApp` (state, views), `TripPanel` (trip inputs, stress summary, hostile stretches, view choice), `RideHud` (stress meter, edge tint, view and speed switches).
@@ -35,10 +35,11 @@
 - 2026-10-01 (latest): Photoreal removed at William's request; 3D model is the default ride view, Street View the alternative. deck.gl and the photoreal module were deleted, and the browser key now allows only `maps-backend.googleapis.com` (Map Tiles API no longer used). The env var keeps its old name `NEXT_PUBLIC_GOOGLE_TILES_KEY`; it now powers Street View only. The photoreal notes above are history.
 - 2026-10-02: Street View is the default ride view (3D model second; 3D only if no Google key). The ride HUD sits top-left (top on phones) and collapses to a pill (play/pause, stress dot, street name, expand) for a near full-screen view.
 - 2026-10-02: Start/End pins are DOM `maplibregl.Marker`s (`setEndpoints` in map.ts) so labels stay upright and use the brand font. The rider in 3D view is a procedural three.js bike + rider (`bike3d.ts`, MapLibre custom 3D layer, loaded only when a ride starts): navy frame, green accents, spinning wheels, pedaling legs, lean into turns, stress-tinted glow ring; scaled to ~150 px on screen at any zoom. Ride camera pads the top 45% so the bike sits in the lower third.
+- 2026-10-02: 3D stress walls removed entirely ("unnecessary; they feel like walls" - William). Streets are flat lines colored by LTS; only buildings and the bike are 3D. Earlier notes about wall heights are history.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme + tour only (no accounts).
 
 ## Scaling cliff
-`network.json` is ~4 MB (~1.2 MB gzipped) and every wall is a client-built GeoJSON polygon. Fine for one city at ~28k segments; past ~100k segments switch walls to PMTiles.
+`network.json` is ~4 MB (~1.2 MB gzipped) and streets are one client-built GeoJSON source. Fine for one city at ~28k segments; past ~100k segments switch walls to PMTiles.
 
 ## Testing notes
 Headless Playwright here runs at devicePixelRatio 0.5 with software WebGL: resize to half the target size, and wait for `window.__rsMap.loaded()` (dev only) before screenshots.

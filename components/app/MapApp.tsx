@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/lib/engine/graph";
-import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, riseWalls, DC_VIEW } from "@/lib/engine/map";
+import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, DC_VIEW } from "@/lib/engine/map";
 import type { BikeLayer } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, type StreetViewHandle } from "@/lib/engine/streetview";
@@ -58,7 +58,6 @@ export default function MapApp() {
   const rideRef = useRef<Ride | null>(null);
   const streetRef = useRef<StreetViewHandle | null>(null);
   const bikeRef = useRef<BikeLayer | null>(null);
-  const wallScale = useRef(0);
   const layersAdded = useRef(false);
 
   const toast = useCallback((m: string) => { setToastMsg(m); window.setTimeout(() => setToastMsg((c) => (c === m ? null : c)), 3500); }, []);
@@ -99,13 +98,13 @@ export default function MapApp() {
     addLayers(map, net);
     layersAdded.current = true;
     applyBasemapTheme(map, dark);
-    riseWalls((k) => { wallScale.current = k; applyPaint(map, { wallScale: k, hasRoute: false }); });
+    applyPaint(map, { hasRoute: false });
   }, [mapReady, net, dark]);
   useEffect(() => { if (layersAdded.current && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [dark]);
 
   useEffect(() => {
     const map = mapRef.current; if (!map || !layersAdded.current || !net) return;
-    applyPaint(map, { wallScale: wallScale.current || 1, hasRoute: !!ok });
+    applyPaint(map, { hasRoute: !!ok });
     setEndpoints(map, from ? [from.x, from.y] : null, to ? [to.x, to.y] : null);
     if (ok && line) {
       setData(map, "rs-route", lineFC(line.coords));

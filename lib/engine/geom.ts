@@ -1,11 +1,8 @@
-// Builds the map's GeoJSON from the network: flat street lines and wall footprints.
+// Builds the map's GeoJSON from the network: street lines colored by stress.
 import type { Net } from "./net";
 
 export const LTS_COLOR = ["#999", "#1cae6d", "#9bd65a", "#f5a524", "#e5484d"];
-export const LTS_HEIGHT = [0, 0, 6, 30, 70]; // metres, before exaggeration
 
-const M_LAT = 110_540;
-const M_LON = 111_320 * Math.cos((38.9 * Math.PI) / 180);
 
 export function streetLines(net: Net): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = new Array(net.nEdges);
@@ -14,39 +11,6 @@ export function streetLines(net: Net): GeoJSON.FeatureCollection {
     const coords: [number, number][] = [];
     for (let k = 0; k < c.length; k += 2) coords.push([c[k], c[k + 1]]);
     features[e] = { type: "Feature", id: e, properties: { lts: net.elts[e] }, geometry: { type: "LineString", coordinates: coords } };
-  }
-  return { type: "FeatureCollection", features };
-}
-
-/** Thin polygon footprint (flat caps) around each street, for fill-extrusion walls. */
-export function wallFootprints(net: Net, halfWidthM = 3): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (let e = 0; e < net.nEdges; e++) {
-    if (net.elts[e] <= 1) continue; // calm streets never get a wall
-    const c = net.ecoords[e];
-    const n = c.length / 2;
-    if (n < 2) continue;
-    // local metric coords
-    const xs = new Float64Array(n), ys = new Float64Array(n);
-    for (let i = 0; i < n; i++) { xs[i] = c[2 * i] * M_LON; ys[i] = c[2 * i + 1] * M_LAT; }
-    const left: [number, number][] = [], right: [number, number][] = [];
-    for (let i = 0; i < n; i++) {
-      // average of adjacent segment normals (simple miter, clamped)
-      let nx = 0, ny = 0;
-      for (const [a, b] of [[i - 1, i], [i, i + 1]]) {
-        if (a < 0 || b >= n) continue;
-        const dx = xs[b] - xs[a], dy = ys[b] - ys[a];
-        const L = Math.hypot(dx, dy) || 1;
-        nx += -dy / L; ny += dx / L;
-      }
-      const L = Math.hypot(nx, ny) || 1;
-      nx /= L; ny /= L;
-      const w = halfWidthM;
-      left.push([(xs[i] + nx * w) / M_LON, (ys[i] + ny * w) / M_LAT]);
-      right.push([(xs[i] - nx * w) / M_LON, (ys[i] - ny * w) / M_LAT]);
-    }
-    const ring = [...left, ...right.reverse(), left[0]];
-    features.push({ type: "Feature", id: e, properties: { lts: net.elts[e] }, geometry: { type: "Polygon", coordinates: [ring] } });
   }
   return { type: "FeatureCollection", features };
 }

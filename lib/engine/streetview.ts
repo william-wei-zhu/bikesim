@@ -22,6 +22,10 @@ const STEP_M = 11;          // distance between photos (Google's photos are roug
 const FADE_MS = 700;        // new photo fades in on top of the old
 const DOLLY = 0.16;         // CSS scale gained while riding from one photo to the next
 const ZOOM = 0.8;           // fixed panorama zoom (changing it refetches tiles)
+/** Horizontal field of view of our panoramas (Google: fov = 180 / 2^zoom); the 3D rider overlay uses the same lens. */
+export const STREETVIEW_HFOV_DEG = 180 / Math.pow(2, ZOOM);
+/** Panorama pitch when looking straight ahead. */
+export const STREETVIEW_BASE_PITCH = -3;
 let optionsSet = false;
 
 type Pano = google.maps.StreetViewPanorama;
@@ -55,7 +59,7 @@ export async function createStreetView(
   const listeners: google.maps.MapsEventListener[] = [];
   const at = (k: number) => slots[(front + k) % SLOTS];
   const applyPov = () => {
-    const pov = { heading: travel + look.yaw, pitch: -3 + look.pitch };
+    const pov = { heading: travel + look.yaw, pitch: STREETVIEW_BASE_PITCH + look.pitch };
     for (const s of slots) s.pano.setPov(pov);
   };
 

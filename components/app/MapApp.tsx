@@ -7,7 +7,7 @@ import { routePair, routeLine, stretches as toStretches, type Stretch } from "@/
 import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, DC_VIEW } from "@/lib/engine/map";
 import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
-import { createStreetView, type StreetViewHandle } from "@/lib/engine/streetview";
+import { createStreetView, STREETVIEW_HFOV_DEG, STREETVIEW_BASE_PITCH, type StreetViewHandle } from "@/lib/engine/streetview";
 import { Ride, type RideFrame } from "@/lib/engine/ride";
 import type { Place } from "@/components/SearchBox";
 import type { Routes, View, RouteKind } from "./types";
@@ -167,7 +167,7 @@ export default function MapApp() {
     const ov = overlayEl.current;
     if (ov) import("@/lib/engine/bike3d").then(({ createBikeOverlay }) => {
       if (cancelled) return;
-      overlayRef.current = createBikeOverlay(ov, readRider());
+      overlayRef.current = createBikeOverlay(ov, readRider(), STREETVIEW_HFOV_DEG, STREETVIEW_BASE_PITCH);
       overlayRef.current.setState(f && f.edgeIdx >= 0 ? net!.elts[f.edgeIdx] : 1, false, f?.heading ?? 0);
     }).catch(() => { /* photos still work without the rider */ });
     return () => {

@@ -299,26 +299,35 @@ export function createBikeLayer(map: MLMap, style: RiderStyle = "male"): BikeLay
 
 export interface BikeOverlay {
   setState(lts: number, moving: boolean, headingDeg: number): void;
-  /** Turn the rider as the viewer looks around: yaw > 0 = looking right (we see the rider's left side). */
+  /** Look around exactly like the Street View camera (yaw > 0 = right, pitch > 0 = up); the rider stays put on the road. */
   setLook(yawDeg: number, pitchDeg: number): void;
   destroy(): void;
 }
 
-/** The same rider drawn over Street View on its own transparent canvas, seen from behind like a racing game. */
-export function createBikeOverlay(host: HTMLElement, style: RiderStyle = "male"): BikeOverlay {
+const EYE_HEIGHT_M = 2.5;   // Street View cameras sit roughly at car-roof height
+const RIDER_AHEAD_M = 6;    // the rider rides this far ahead of the camera, on the road
+
+/** The same rider drawn over Street View on a transparent canvas whose camera matches the panorama's:
+ * same position, same field of view, same yaw and pitch. The rider is a fixed point on the road, so when you
+ * look around, rider and street move together and the rider never slides across the road. */
+export function createBikeOverlay(host: HTMLElement, style: RiderStyle = "male", hfovDeg = 103, basePitchDeg = -3): BikeOverlay {
   const { scene, update, root } = createBikeModel(style);
+  root.position.set(0, 0, -RIDER_AHEAD_M); // facing -z, the direction of travel
   const canvas = document.createElement("canvas");
   canvas.setAttribute("aria-hidden", "true");
   canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;";
   host.appendChild(canvas);
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-  const aim = (pitchDeg: number) => {
-    camera.position.set(0, 2.5, 7.4);   // behind and above the rider
-    camera.lookAt(0, 0.6 + pitchDeg * 0.12, -8); // looking down the road, rider small in the lower third
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+  camera.position.set(0, EYE_HEIGHT_M, 0);
+  camera.rotation.order = "YXZ";
+  const look = { yaw: 0, pitch: 0 };
+  const aim = () => {
+    camera.rotation.y = (-look.yaw * Math.PI) / 180;                     // three.js turns counter-clockwise
+    camera.rotation.x = ((basePitchDeg + look.pitch) * Math.PI) / 180;
   };
-  aim(0);
+  aim();
   const state = { lts: 1, moving: false, heading: 0, prevHeading: 0, at: 0 };
   let last = performance.now(), raf = 0, dirty = true, settle = 0;
 
@@ -327,7 +336,8 @@ export function createBikeOverlay(host: HTMLElement, style: RiderStyle = "male")
     if (!w || !h) return;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    camera.fov = w / h < 1 ? 50 : 36; // keep the rider a similar size on phones (portrait) and desktops
+    // Street View fixes the horizontal field of view; three.js wants the vertical one.
+    camera.fov = (2 * Math.atan(Math.tan((hfovDeg * Math.PI) / 360) / camera.aspect) * 180) / Math.PI;
     camera.updateProjectionMatrix();
     dirty = true;
   };
@@ -355,7 +365,7 @@ export function createBikeOverlay(host: HTMLElement, style: RiderStyle = "male")
 
   return {
     setState(lts, moving, headingDeg) { state.lts = lts; state.moving = moving; state.heading = headingDeg; state.at = performance.now(); },
-    setLook(yawDeg, pitchDeg) { root.rotation.y = (yawDeg * Math.PI) / 180; aim(pitchDeg); dirty = true; },
+    setLook(yawDeg, pitchDeg) { look.yaw = yawDeg; look.pitch = pitchDeg; aim(); dirty = true; },
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); renderer.dispose(); canvas.remove(); },
   };
 }

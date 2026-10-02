@@ -51,11 +51,12 @@ export default function AboutPage() {
         </ul>
       </Section>
 
-      <Section title="The route avoids hostile streets wherever it can">
+      <Section title="Pick the shortest route, or the one that avoids hostile streets">
         <p>
-          RideSim plans for a confident everyday commuter: comfortable on streets up to LTS 3, and avoiding hostile LTS 4 streets.
-          It finds the route that keeps you off hostile streets, even if that means riding farther, and shows the shortest route
-          as a dotted line for comparison. If a hostile stretch cannot be avoided, it is listed by name and length.
+          By default RideSim shows the shortest route, so you can see exactly how stressful the direct ride would be.
+          Switch to <span className="font-semibold">Lowest stress</span> and it finds the route that keeps you off hostile LTS 4 streets,
+          even if that means riding farther. The other route stays on the map as a dotted line, and the panel tells you the trade-off:
+          how much longer, and how much hostile riding it saves. Hostile stretches on your route are listed by name and length.
         </p>
       </Section>
 

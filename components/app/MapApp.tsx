@@ -31,7 +31,7 @@ function readUrl() {
     const X = Number(x), Y = Number(y);
     return Number.isFinite(X) && Number.isFinite(Y) ? { x: X, y: Y, label: rest.join(",") || "Dropped pin" } : null;
   };
-  return { from: place("from"), to: place("to"), kind: (p.get("route") === "short" ? "short" : "calm") as RouteKind };
+  return { from: place("from"), to: place("to"), kind: (p.get("route") === "calm" ? "calm" : "short") as RouteKind };
 }
 
 export default function MapApp() {
@@ -51,7 +51,7 @@ export default function MapApp() {
   const [from, setFrom] = useState<Place | null>(init?.from ?? null);
   const [to, setTo] = useState<Place | null>(init?.to ?? null);
   const [pick, setPick] = useState<"from" | "to" | null>(null);
-  const [kind, setKind] = useState<RouteKind>(init?.kind ?? "calm");
+  const [kind, setKind] = useState<RouteKind>(init?.kind ?? "short");
   const [view, setView] = useState<View>(() => (GOOGLE_KEY && typeof window !== "undefined" ? readDefaultView() : "model"));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
@@ -140,7 +140,7 @@ export default function MapApp() {
     const enc = (pl: Place) => `${pl.x.toFixed(5)},${pl.y.toFixed(5)},${pl.label}`;
     if (from) p.set("from", enc(from));
     if (to) p.set("to", enc(to));
-    if (kind === "short") p.set("route", "short");
+    if (kind === "calm") p.set("route", "calm");
     const q = p.toString();
     window.history.replaceState(null, "", q ? `${window.location.pathname}?${q}` : window.location.pathname);
   }, [from, to, kind]);

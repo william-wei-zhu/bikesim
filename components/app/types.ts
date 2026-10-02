@@ -8,5 +8,5 @@ export type Routes =
   | { error: "far" | "same" | "none" }
   | { a: number; b: number; calm: Route; fastest: Route };
 
-/** Which route to ride: the lowest-stress one (avoids hostile streets) or the shortest one. */
+/** Which route to ride: the shortest one (default) or the lowest-stress one (avoids hostile streets). */
 export type RouteKind = "calm" | "short";

@@ -100,7 +100,7 @@ export function TripPanel(p: {
             <div className="mt-4">
               <p className="eyebrow mb-2">Route</p>
               <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}
-                options={[{ value: "calm", label: `Lowest stress · ${km(ok.calm.lengthM)}` }, { value: "short", label: `Shortest · ${km(ok.fastest.lengthM)}` }]} />
+                options={[{ value: "short", label: `Shortest · ${km(ok.fastest.lengthM)}` }, { value: "calm", label: `Lowest stress · ${km(ok.calm.lengthM)}` }]} />
             </div>
             <div className="mt-4">
               <p className="eyebrow mb-2">Ride it in</p>

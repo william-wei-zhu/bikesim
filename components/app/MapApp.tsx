@@ -192,6 +192,9 @@ export default function MapApp() {
     const map = mapRef.current;
     if (!map || !line) return;
     rideRef.current?.stop();
+    // Each ride starts in the view chosen in Settings (switchable during the ride).
+    const startView: View = GOOGLE_KEY ? readDefaultView() : "model";
+    setView(startView);
     const r = new Ride(map, line.coords, line.segEdge, (f) => {
       setRideFrame(f);
       streetRef.current?.follow(f.distM, f.heading);
@@ -199,7 +202,7 @@ export default function MapApp() {
       bikeRef.current?.setPose(f.pos, f.heading, lts, true);
       overlayRef.current?.setState(lts, true, f.heading);
     }, () => setRidePlaying(false));
-    r.baseMps = view === "street" ? STREET_MPS : MODEL_MPS;
+    r.baseMps = startView === "street" ? STREET_MPS : MODEL_MPS;
     rideRef.current = r;
     r.enableOrbit(); // drag to look around the rider in the 3D view
     setRiding(true); setRidePlaying(true);
@@ -213,7 +216,7 @@ export default function MapApp() {
     }).catch(() => { /* the ride still works without the bike model */ });
     map.flyTo({ center: line.coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
     window.setTimeout(() => { if (rideRef.current === r) r.play(); }, 1550);
-  }, [line, view, net]);
+  }, [line, net]);
 
   const flyToStretch = useCallback((s: Stretch) => {
     if (!net) return;
@@ -249,7 +252,7 @@ export default function MapApp() {
         {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
         {net && !riding && (
           <TripPanel pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
-            setPick={setPick} view={view} setView={setView} views={VIEWS} onRide={startRide} onFlyTo={flyToStretch} />
+            setPick={setPick} onRide={startRide} onFlyTo={flyToStretch} />
         )}
         {net && riding && rideFrame && (
           <RideHud net={net} frame={rideFrame} playing={ridePlaying} view={view} views={VIEWS} onView={setView} noPhotos={noPhotos}

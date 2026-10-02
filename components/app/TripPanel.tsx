@@ -5,7 +5,7 @@ import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
 import { Btn, Card, Segmented, km } from "@/components/ui";
-import type { Routes, View, RouteKind } from "./types";
+import type { Routes, RouteKind } from "./types";
 import { cn } from "@/lib/utils";
 
 const EXAMPLES: { label: string; from: Place; to: Place }[] = [
@@ -19,7 +19,7 @@ const SPEED_KMH = 16; // typical everyday cycling pace, for the time estimate
 export function TripPanel(p: {
   pois: Poi[]; routes: Routes; kind: RouteKind; setKind: (k: RouteKind) => void; stretches: Stretch[];
   from: Place | null; to: Place | null; setFrom: (x: Place | null) => void; setTo: (x: Place | null) => void;
-  setPick: (k: "from" | "to") => void; view: View; setView: (v: View) => void; views: { value: View; label: string }[];
+  setPick: (k: "from" | "to") => void;
   onRide: () => void; onFlyTo: (s: Stretch) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -101,10 +101,6 @@ export function TripPanel(p: {
               <p className="eyebrow mb-2">Route</p>
               <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}
                 options={[{ value: "short", label: `Shortest · ${km(ok.fastest.lengthM)}` }, { value: "calm", label: `Lowest stress · ${km(ok.calm.lengthM)}` }]} />
-            </div>
-            <div className="mt-4">
-              <p className="eyebrow mb-2">Ride it in</p>
-              <Segmented<View> stretch label="Ride view" value={p.view} onChange={p.setView} options={p.views} />
             </div>
             <Btn variant="primary" className="mt-3 w-full" onClick={p.onRide}><Bike className="size-4" /> Start the ride</Btn>
             <div className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4">

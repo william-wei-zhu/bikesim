@@ -7,7 +7,7 @@ const outfit = Outfit({ variable: "--font-outfit", subsets: ["latin"], weight: [
 const publicSans = Public_Sans({ variable: "--font-public-sans", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["400", "600"] });
 
-const TAGLINE = "Break the walls, ride the city.";
+const TAGLINE = "Feel it before you ride it.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ridesimdc.com"),

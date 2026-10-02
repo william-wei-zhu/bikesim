@@ -43,7 +43,7 @@ export function TripPanel(p: {
         <span className="sr-only">{collapsed ? "Show trip" : "Hide trip"}</span>
       </button>
       <div className="overflow-y-auto px-5 pb-5 md:pt-5">
-        {!ok && <h2 className="text-[1.5rem] font-bold">Ride it before you ride it.</h2>}
+        {!ok && <h2 className="text-[1.5rem] font-bold">Feel it before you ride it.</h2>}
         {!ok && (
           <p className="mt-2 text-[0.85rem] text-ink-2">
             Pick any trip in DC. See how stressful every block is, then ride it in 3D or through real street photos.

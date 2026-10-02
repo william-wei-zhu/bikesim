@@ -2,7 +2,7 @@
 
 # RideSim DC (ridesimdc.com)
 
-"Ride it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually in our 3D model (default) or through Google Street View photos. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
+"Feel it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually in our 3D model (default) or through Google Street View photos. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
 
 ## Layout
 - `app/` Next.js 16 App Router. `/` is the map app (client-only via `components/app/MapAppLoader.tsx`). `app/api/geocode` proxies Nominatim (DC-bounded, per-IP limit, 24h in-memory cache).

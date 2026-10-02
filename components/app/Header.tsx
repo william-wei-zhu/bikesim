@@ -7,7 +7,9 @@ export function Header() {
   return (
     <header className="relative z-20 border-b border-line bg-paper">
       <div className="flex h-16 items-center gap-3 px-3 md:px-5">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="RideSim DC home">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="RideSim DC home"
+          // Already on the map: Next keeps the page mounted, so tell it to reset to the start screen.
+          onClick={() => window.dispatchEvent(new Event("rs-home"))}>
           <Image src="/brand/logo-mark-512.png" alt="" width={40} height={40} className="size-10 rounded-[10px]" priority />
           <span className="hidden font-display text-[1.25rem] font-bold tracking-tight sm:inline">RideSim DC</span>
         </Link>

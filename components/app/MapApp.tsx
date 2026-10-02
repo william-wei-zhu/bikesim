@@ -227,6 +227,21 @@ export default function MapApp() {
       padding: window.innerWidth < 768 ? { bottom: window.innerHeight * 0.45, top: 0, left: 0, right: 0 } : { left: 440, top: 0, right: 0, bottom: 0 } });
   }, [net]);
 
+  // Logo click: back to the start screen (no trip, north-up DC view), even when already on "/".
+  const goHome = useCallback(() => {
+    stopRide();
+    setFrom(null); setTo(null); setPick(null); setKind("short");
+    const map = mapRef.current;
+    if (map) {
+      setGhostPin(map, null);
+      map.flyTo({ ...DC_VIEW, pitch: window.matchMedia("(max-width: 767px)").matches ? 0 : DC_VIEW.pitch, duration: 1200 });
+    }
+  }, [stopRide]);
+  useEffect(() => {
+    window.addEventListener("rs-home", goHome);
+    return () => window.removeEventListener("rs-home", goHome);
+  }, [goHome]);
+
   // ---------- map clicks: first click sets the start, second the destination ----------
   const clickRef = useRef<(e: maplibregl.MapMouseEvent) => void>(() => {});
   useEffect(() => {

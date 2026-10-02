@@ -50,6 +50,7 @@
 - 2026-10-02: Trip panel order: inputs, Start the ride, Route choice, stress bar, hostile stretches. The distance/time/hostile stats row and the route trade-off sentence were removed (William: unnecessary).
 - 2026-10-02: Bigger rider on phones. Street View on narrow/portrait screens uses panorama zoom 1.5 (hfov ~64 deg, vs 0.8 / ~103 deg on desktop) and puts the rider 4.5 m ahead (vs 6 m); the overlay uses the same lens so the rider stays road-anchored (rider ~16% of screen height on a 390x844 phone, was ~5%). 3D view sizes the rider at 27% of map height on portrait screens, 19% on landscape (150 to 280 px).
 - 2026-10-02: Opening view is north-up (bearing 0, was -22 which first-time users found disorienting); trip framing and ride end also reset to north-up. The 58 degree tilt stays so the 3D buildings read.
+- 2026-10-02: The header logo resets to the start screen (clears start/end, route choice and any ride, flies back to the north-up DC view). Next keeps "/" mounted on a same-page link, so Header dispatches an `rs-home` window event that MapApp handles.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff

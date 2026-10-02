@@ -16,7 +16,7 @@ export function RideHud({ net, frame, playing, view, views, onView, onPlayPause,
   noPhotos: boolean;
 }) {
   const [speed, setSpeed] = useState("1");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true); // start compact so the view is nearly full screen
   const e = frame.edgeIdx;
   const lts = e >= 0 ? net.elts[e] : 1;
   return (
@@ -40,6 +40,10 @@ export function RideHud({ net, frame, playing, view, views, onView, onPlayPause,
           <button onClick={() => setCollapsed(false)} aria-label="Show ride controls" title="Show ride controls"
             className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
             <Maximize2 className="size-4" />
+          </button>
+          <button onClick={onExit} aria-label="End ride" title="End ride"
+            className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
+            <X className="size-4" />
           </button>
         </div>
       )}

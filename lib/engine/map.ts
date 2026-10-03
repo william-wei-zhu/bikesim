@@ -18,6 +18,8 @@ export function createMap(container: HTMLElement, opts: { flat: boolean }) {
     canvasContextAttributes: { antialias: true, preserveDrawingBuffer: process.env.NODE_ENV !== "production" },
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
+  // On phones the trip sheet covers the bottom corner, so the photo button moves to the top, under the step prompt.
+  map.addControl(new ImageryControl(), window.matchMedia("(max-width: 767px)").matches ? "top-right" : "bottom-right");
   if (process.env.NODE_ENV !== "production") (window as unknown as { __rsMap: maplibregl.Map }).__rsMap = map;
   return map;
 }
@@ -67,6 +69,47 @@ export function applyBasemapTheme(map: maplibregl.Map, dark: boolean) {
   }
 }
 
+// DC government's 2025 aerial photos (the same imagery RideScore DC's Imagery button uses). Free, public, DC only.
+const ORTHO_TILES = "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Ortho2025_WebMercator/MapServer/tile/{z}/{y}/{x}";
+const AERIAL_KEY = "rs-aerial";
+const readAerial = () => { try { return localStorage.getItem(AERIAL_KEY) === "1"; } catch { return false; } };
+
+/** Show or hide the aerial photos. The white 3D buildings turn see-through so the roofs in the photo still show. */
+export function setImagery(map: maplibregl.Map, on: boolean) {
+  if (!map.getLayer("rs-aerial")) return;
+  map.setLayoutProperty("rs-aerial", "visibility", on ? "visible" : "none");
+  if (map.getLayer("rs-buildings")) map.setPaintProperty("rs-buildings", "fill-extrusion-opacity",
+    ["interpolate", ["linear"], ["zoom"], 13, 0, 14, on ? 0.45 : 0.92] as never);
+}
+
+/** Map button that toggles the aerial photos; the choice is remembered on this device. */
+class ImageryControl implements maplibregl.IControl {
+  private el?: HTMLDivElement;
+  onAdd(map: maplibregl.Map) {
+    const el = document.createElement("div");
+    el.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "rs-aerial-btn";
+    btn.title = "Aerial photos";
+    btn.setAttribute("aria-label", "Show aerial photos");
+    // Lucide "image" icon: a photo frame with a sun and hills.
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>';
+    const sync = (on: boolean) => { btn.classList.toggle("is-on", on); btn.setAttribute("aria-pressed", String(on)); };
+    sync(readAerial());
+    btn.addEventListener("click", () => {
+      const on = !readAerial();
+      try { localStorage.setItem(AERIAL_KEY, on ? "1" : "0"); } catch { /* storage blocked: toggle still works this visit */ }
+      sync(on);
+      setImagery(map, on);
+    });
+    el.appendChild(btn);
+    this.el = el;
+    return el;
+  }
+  onRemove() { this.el?.remove(); }
+}
+
 /** Add all RideSim sources and layers. Call once after the style loads. */
 export function addLayers(map: maplibregl.Map, net: Net) {
   const firstLabel = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
@@ -74,6 +117,11 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   map.addSource("rs-route-fast", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-route", { type: "geojson", data: EMPTY_FC, lineMetrics: true });
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });
+
+  // Aerial photos sit above the basemap's fills and roads, below the stress lines and the labels.
+  map.addSource("rs-aerial", { type: "raster", tiles: [ORTHO_TILES], tileSize: 256, maxzoom: 20,
+    bounds: [-77.12, 38.79, -76.909, 38.996], attribution: "Aerial photos © DC Office of the Chief Technology Officer" });
+  map.addLayer({ id: "rs-aerial", type: "raster", source: "rs-aerial", layout: { visibility: "none" } }, firstLabel);
 
   const ltsColor = ["match", ["get", "lts"], 1, LTS_COLOR[1], 2, LTS_COLOR[2], 3, LTS_COLOR[3], 4, LTS_COLOR[4], "#999"];
   map.addLayer({
@@ -104,6 +152,7 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   // The route is colored by stress along its length (line-gradient set per route in setRouteGradient).
   map.addLayer({ id: "rs-route", type: "line", source: "rs-route", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#1cae6d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 5, 16, 10] } });
+  setImagery(map, readAerial());
 }
 
 /** Stress view of the whole city; when a route is shown, the other streets step back so the route reads first. */

@@ -106,6 +106,20 @@ h1, h2, h3, .font-display {
 .maplibregl-ctrl-attrib {
   font-size: 0.6rem;
 }
+/* Aerial photos toggle: navy icon at rest, filled navy when on. */
+.maplibregl-ctrl-group button.rs-aerial-btn {
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  border-radius: 11px;
+}
+@media (max-width: 767px) {
+  .maplibregl-ctrl-top-right { top: 64px; }
+}
+.maplibregl-ctrl-group button.rs-aerial-btn.is-on {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
 .dark .maplibregl-ctrl-attrib {
   background: rgb(6 24 47 / 0.8) !important;
   color: var(--ink-2);

@@ -4,7 +4,9 @@
 // - between photos the visible one "dollies" forward with a GPU CSS scale (no tile refetch, no flicker)
 // - drag to look around (yaw/pitch offset from the direction of travel), double-click to reset
 // Billing: three panorama loads per Street View session (Google bills per StreetViewPanorama created);
-// moving them with setPosition adds no loads, so cost does not depend on distance.
+// moving them (setPano) adds no loads, so cost does not depend on distance.
+// Photos are looked up with StreetViewService limited to official Google, outdoor imagery, so a ride never
+// cuts to an indoor shot or a user-uploaded photo sphere (setPosition alone takes the nearest of any kind).
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 
 export interface Look { yaw: number; pitch: number }
@@ -31,14 +33,16 @@ export const STREETVIEW_BASE_PITCH = -3;
 let optionsSet = false;
 
 type Pano = google.maps.StreetViewPanorama;
-interface Slot { el: HTMLDivElement; pano: Pano; ready: boolean; panoId: string; target: number }
+// none: no outdoor Google photo near this point (the panorama still holds an older photo, so status alone can't tell).
+interface Slot { el: HTMLDivElement; pano: Pano; ready: boolean; panoId: string; target: number; none: boolean; req: number }
 
 export async function createStreetView(
   host: HTMLElement, apiKey: string, pointAt: (d: number) => [number, number], startDist: number, heading: number,
   onCoverage: (hasPhotos: boolean) => void, onLook: (look: Look) => void, zoom = streetViewZoom(false),
 ): Promise<StreetViewHandle> {
   if (!optionsSet) { setOptions({ key: apiKey, v: "weekly" }); optionsSet = true; }
-  const { StreetViewPanorama } = await importLibrary("streetView");
+  const { StreetViewPanorama, StreetViewService, StreetViewSource, StreetViewPreference } = await importLibrary("streetView");
+  const service = new StreetViewService();
 
   let z = 1;
   const slots: Slot[] = Array.from({ length: SLOTS }, (_, i) => {
@@ -52,7 +56,7 @@ export async function createStreetView(
       motionTracking: false, motionTrackingControl: false, scrollwheel: false, zoom,
       pov: { heading, pitch: -3 },
     });
-    return { el, pano, ready: false, panoId: "", target: 0 };
+    return { el, pano, ready: false, panoId: "", target: 0, none: false, req: 0 };
   });
   let front = 0;                 // visible slot
   let stepStart = startDist;     // distance where the visible photo was taken
@@ -65,14 +69,29 @@ export async function createStreetView(
     for (const s of slots) s.pano.setPov(pov);
   };
 
+  const hasPhoto = (slot: Slot) => !slot.none && slot.pano.getStatus() === "OK";
   const load = (slot: Slot, d: number) => {
-    slot.ready = false; slot.panoId = ""; slot.target = d;
+    slot.ready = false; slot.panoId = ""; slot.target = d; slot.none = false;
+    const req = ++slot.req;
     const [x, y] = pointAt(d);
-    slot.pano.setPosition({ lng: x, lat: y });
+    service.getPanorama({
+      location: { lng: x, lat: y }, radius: 40, preference: StreetViewPreference.NEAREST,
+      sources: [StreetViewSource.GOOGLE, StreetViewSource.OUTDOOR], // intersection: official and outdoor
+    }).then(({ data }) => {
+      if (req !== slot.req) return; // superseded by a newer load
+      const id = data.location?.pano;
+      if (!id) throw new Error("no pano");
+      if (id === slot.pano.getPano()) { slot.panoId = id; slot.ready = true; return; } // same photo: no status event
+      slot.pano.setPano(id);
+    }).catch(() => {
+      if (req !== slot.req) return;
+      slot.none = true; slot.ready = true; // no outdoor photo here: don't hold the ride
+      if (slot === slots[front]) onCoverage(false);
+    });
   };
   for (const slot of slots) {
     listeners.push(slot.pano.addListener("status_changed", () => {
-      const ok = slot.pano.getStatus() === "OK";
+      const ok = hasPhoto(slot);
       if (slot === slots[front]) onCoverage(ok);
       // Let the first tiles paint before this photo is allowed to fade in.
       if (ok) window.setTimeout(() => { slot.ready = true; slot.panoId = slot.pano.getPano(); }, 300);
@@ -96,7 +115,7 @@ export async function createStreetView(
     next.el.style.zIndex = String(++z);
     next.el.style.opacity = "1";
     front = (front + 1) % SLOTS;
-    onCoverage(next.pano.getStatus() === "OK");
+    onCoverage(hasPhoto(next));
     // After the fade, recycle the old slot to preload the photo after the last one in the ring.
     window.setTimeout(() => {
       next.el.style.transition = `opacity ${FADE_MS}ms ease-in-out`;

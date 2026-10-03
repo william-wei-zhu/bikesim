@@ -74,9 +74,18 @@ const ORTHO_TILES = "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/O
 const AERIAL_KEY = "rs-aerial";
 const readAerial = () => { try { return localStorage.getItem(AERIAL_KEY) === "1"; } catch { return false; } };
 
+// Rides always use the plain white city model; the photos (and their button) come back when the ride ends.
+let imageryPaused = false;
+export function pauseImagery(map: maplibregl.Map, paused: boolean) {
+  imageryPaused = paused;
+  map.getContainer().classList.toggle("rs-aerial-paused", paused);
+  setImagery(map, readAerial());
+}
+
 /** Show or hide the aerial photos. The white 3D buildings turn see-through so the roofs in the photo still show. */
-export function setImagery(map: maplibregl.Map, on: boolean) {
+export function setImagery(map: maplibregl.Map, want: boolean) {
   if (!map.getLayer("rs-aerial")) return;
+  const on = want && !imageryPaused;
   map.setLayoutProperty("rs-aerial", "visibility", on ? "visible" : "none");
   if (map.getLayer("rs-buildings")) map.setPaintProperty("rs-buildings", "fill-extrusion-opacity",
     ["interpolate", ["linear"], ["zoom"], 13, 0, 14, on ? 0.45 : 0.92] as never);

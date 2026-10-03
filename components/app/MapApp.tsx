@@ -5,7 +5,7 @@ import { ArrowDown, ArrowLeft } from "lucide-react";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, loadBlocks, distM, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi, type BlockInfo } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, explainStretch, type Stretch, type StretchWhy } from "@/lib/engine/graph";
-import { createMap, addLayers, applyBasemapTheme, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, DC_VIEW } from "@/lib/engine/map";
+import { createMap, addLayers, applyBasemapTheme, pauseImagery, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, DC_VIEW } from "@/lib/engine/map";
 import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, streetViewZoom, streetViewHfov, STREETVIEW_BASE_PITCH, type StreetViewHandle } from "@/lib/engine/streetview";
@@ -115,6 +115,7 @@ export default function MapApp() {
     applyPaint(map, { hasRoute: false });
   }, [mapReady, net, dark]);
   useEffect(() => { if (layersAdded.current && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [dark]);
+  useEffect(() => { if (layersAdded.current && mapRef.current) pauseImagery(mapRef.current, riding); }, [riding]);
 
   useEffect(() => {
     const map = mapRef.current; if (!map || !layersAdded.current || !net) return;

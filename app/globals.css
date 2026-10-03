@@ -113,6 +113,7 @@ h1, h2, h3, .font-display {
   color: var(--ink);
   border-radius: 11px;
 }
+.rs-aerial-paused .maplibregl-ctrl-group:has(.rs-aerial-btn) { display: none; }
 @media (max-width: 767px) {
   .maplibregl-ctrl-top-right { top: 64px; }
 }

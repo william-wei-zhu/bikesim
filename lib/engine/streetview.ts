@@ -7,12 +7,15 @@
 // moving them (setPano) adds no loads, so cost does not depend on distance.
 // Photos are looked up with StreetViewService limited to official Google, outdoor imagery, so a ride never
 // cuts to an indoor shot or a user-uploaded photo sphere (setPosition alone takes the nearest of any kind).
+// Seeking (dragging the progress bar) jumps straight to the new spot: once the drag settles, the two hidden
+// slots load the photos there and the view crossfades once, instead of stepping through every photo between.
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 
 export interface Look { yaw: number; pitch: number }
 
 export interface StreetViewHandle {
-  /** Call every ride frame with the rider's distance along the route and travel heading. */
+  /** Call every ride frame with the rider's distance along the route and travel heading. A jump of more than
+   * one photo (a seek) loads the photos at the new spot once the drag settles. */
   follow(distM: number, heading: number): void;
   /** How far the ride may advance right now (waits at a photo boundary until the next photo has loaded). */
   maxDistance(): number;
@@ -23,6 +26,7 @@ const SLOTS = 3;
 const STEP_M = 11;          // distance between photos (Google's photos are roughly 8 to 12 m apart)
 const FADE_MS = 700;        // new photo fades in on top of the old
 const DOLLY = 0.16;         // CSS scale gained while riding from one photo to the next
+const SEEK_SETTLE_MS = 250; // wait for a progress-bar drag to settle before loading photos at the new spot
 /** Fixed panorama zoom (changing it mid-ride refetches tiles). Phones zoom in: portrait screens are narrow,
  * and a wide lens makes the street and the rider tiny. */
 export const streetViewZoom = (narrow: boolean) => (narrow ? 1.5 : 0.8);
@@ -63,6 +67,10 @@ export async function createStreetView(
   let travel = heading;          // smoothed direction of travel
   const look: Look = { yaw: 0, pitch: 0 };
   const listeners: google.maps.MapsEventListener[] = [];
+  let lastDist = startDist;      // latest distance passed to follow()
+  let epoch = 0;                 // bumped by each seek, so a pending recycle doesn't overwrite a resynced slot
+  let seekTimer = 0;             // pending seek (debounced while the progress bar is dragged)
+  let seekAt = 0;
   const at = (k: number) => slots[(front + k) % SLOTS];
   const applyPov = () => {
     const pov = { heading: travel + look.yaw, pitch: STREETVIEW_BASE_PITCH + look.pitch };
@@ -81,12 +89,13 @@ export async function createStreetView(
       if (req !== slot.req) return; // superseded by a newer load
       const id = data.location?.pano;
       if (!id) throw new Error("no pano");
-      if (id === slot.pano.getPano()) { slot.panoId = id; slot.ready = true; return; } // same photo: no status event
+      if (id === slot.pano.getPano()) { slot.panoId = id; slot.ready = true; tryAdvance(); return; } // same photo: no status event
       slot.pano.setPano(id);
     }).catch(() => {
       if (req !== slot.req) return;
       slot.none = true; slot.ready = true; // no outdoor photo here: don't hold the ride
       if (slot === slots[front]) onCoverage(false);
+      tryAdvance();
     });
   };
   for (const slot of slots) {
@@ -94,8 +103,8 @@ export async function createStreetView(
       const ok = hasPhoto(slot);
       if (slot === slots[front]) onCoverage(ok);
       // Let the first tiles paint before this photo is allowed to fade in.
-      if (ok) window.setTimeout(() => { slot.ready = true; slot.panoId = slot.pano.getPano(); }, 300);
-      else slot.ready = true; // no photo here: don't hold the ride
+      if (ok) window.setTimeout(() => { slot.ready = true; slot.panoId = slot.pano.getPano(); tryAdvance(); }, 300);
+      else { slot.ready = true; tryAdvance(); } // no photo here: don't hold the ride
     }));
   }
   slots.forEach((s, i) => load(s, startDist + i * STEP_M));
@@ -116,13 +125,32 @@ export async function createStreetView(
     next.el.style.opacity = "1";
     front = (front + 1) % SLOTS;
     onCoverage(hasPhoto(next));
-    // After the fade, recycle the old slot to preload the photo after the last one in the ring.
+    // After the fade, recycle the old slot to preload the photo after the last one in the ring
+    // (unless a seek has reloaded the ring since).
+    const e = epoch;
     window.setTimeout(() => {
       next.el.style.transition = `opacity ${FADE_MS}ms ease-in-out`;
       old.el.style.opacity = "0"; old.el.style.zIndex = "0";
-      load(old, at(SLOTS - 2).target + STEP_M);
+      if (e === epoch) load(old, at(SLOTS - 2).target + STEP_M);
     }, duplicate ? 0 : FADE_MS + 50);
   };
+  // Show the next photo once it has loaded and the rider has reached it. Also runs when a photo finishes
+  // loading, so a seek while paused (no ride frames) still lands.
+  function tryAdvance() {
+    if (seekTimer) return;
+    const next = at(1);
+    if (next.ready && lastDist >= next.target) advance();
+  }
+  // Seek: keep the visible photo, load the new spot into the two hidden slots, then crossfade to it once.
+  const resync = (d: number) => {
+    seekTimer = 0;
+    epoch++;
+    load(at(1), d);
+    load(at(2), d + STEP_M);
+  };
+  // More than one photo ahead of the next one, or back behind the visible one (measured from the next photo,
+  // which a seek has already moved to the new spot).
+  const isJump = (d: number) => d > at(1).target + STEP_M || d < at(1).target - 1.5 * STEP_M;
 
   // Drag to look around; the rider overlay turns with it via onLook.
   let drag: { x: number; y: number; id: number } | null = null;
@@ -145,19 +173,30 @@ export async function createStreetView(
 
   return {
     follow(distM, h) {
-      const next = at(1);
-      if (next.ready && distM >= next.target) advance();
+      lastDist = distM;
       const d = ((h - travel + 540) % 360) - 180;
       travel += d * 0.08;
       applyPov();
+      if (seekTimer || isJump(distM)) {
+        // Hold the current photo while the progress bar is dragged; load the new spot once it settles.
+        if (!seekTimer || Math.abs(distM - seekAt) > 1) {
+          window.clearTimeout(seekTimer);
+          seekAt = distM;
+          seekTimer = window.setTimeout(() => resync(lastDist), SEEK_SETTLE_MS);
+        }
+        return;
+      }
+      tryAdvance();
       const progress = Math.min(1, Math.max(0, (distM - stepStart) / STEP_M));
       at(0).el.style.transform = `scale(${1 + DOLLY * progress})`;
     },
     maxDistance() {
+      if (seekTimer) return 0; // hold the ride until the photos at the new spot are requested
       const next = at(1);
       return next.ready ? Infinity : next.target + STEP_M * 0.3;
     },
     destroy() {
+      window.clearTimeout(seekTimer); seekTimer = 0;
       listeners.forEach((l) => l.remove());
       host.removeEventListener("pointerdown", down); host.removeEventListener("pointermove", move);
       host.removeEventListener("pointerup", up); host.removeEventListener("pointercancel", up);

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowDown, ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronRight, ChevronUp, MapPin, Share2 } from "lucide-react";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch, StretchWhy } from "@/lib/engine/graph";
@@ -7,22 +8,18 @@ import { SearchBox, type Place } from "@/components/SearchBox";
 import { Btn, Card, Segmented, km } from "@/components/ui";
 import type { Routes, RouteKind } from "./types";
 import { cn } from "@/lib/utils";
+import type { City } from "@/lib/cities";
 
-const EXAMPLES: { label: string; from: Place; to: Place }[] = [
-  { label: "Petworth to the Wharf", from: { label: "Petworth", x: -77.0247, y: 38.9413 }, to: { label: "The Wharf", x: -77.0236, y: 38.8786 } },
-  { label: "Anacostia to Eastern Market", from: { label: "Anacostia", x: -76.9952, y: 38.8625 }, to: { label: "Eastern Market", x: -76.9963, y: 38.8862 } },
-  { label: "Georgetown to Union Station", from: { label: "Georgetown", x: -77.0628, y: 38.9055 }, to: { label: "Union Station", x: -77.0063, y: 38.8973 } },
-];
 const BAR = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"];
 
 export function TripPanel(p: {
-  pois: Poi[]; routes: Routes; kind: RouteKind; setKind: (k: RouteKind) => void; stretches: Stretch[];
+  city: City; pois: Poi[]; routes: Routes; kind: RouteKind; setKind: (k: RouteKind) => void; stretches: Stretch[];
   from: Place | null; to: Place | null; setFrom: (x: Place | null) => void; setTo: (x: Place | null) => void;
   setPick: (k: "from" | "to") => void; awaiting: "from" | "to" | null;
   onRide: () => void; onFlyTo: (s: Stretch) => void; onShare: () => void; explain: (s: Stretch) => Promise<StretchWhy>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  // Which hostile stretch is open, and its RideScore DC facts once loaded.
+  // Which hostile stretch is open, and its street facts once loaded.
   const [open, setOpen] = useState<number | null>(null);
   const [why, setWhy] = useState<Record<number, StretchWhy | "error">>({});
   const toggleWhy = (s: Stretch) => {
@@ -69,11 +66,11 @@ export function TripPanel(p: {
 
         <div className={cn(!ok && "mt-4", "space-y-2")}>
           <div className={cn("flex items-center gap-2 rounded-full", p.awaiting === "from" && "ring-2 ring-accent ring-offset-2 ring-offset-paper")}>
-            <div className="flex-1"><SearchBox placeholder="Start: search, or click the map" pois={p.pois} value={p.from} onPick={p.setFrom} onClear={() => p.setFrom(null)} /></div>
+            <div className="flex-1"><SearchBox city={p.city} placeholder="Start: search, or click the map" pois={p.pois} value={p.from} onPick={p.setFrom} onClear={() => p.setFrom(null)} /></div>
             {!p.from && <PickBtn on={() => p.setPick("from")} />}
           </div>
           <div className={cn("flex items-center gap-2 rounded-full", p.awaiting === "to" && "ring-2 ring-accent ring-offset-2 ring-offset-paper")}>
-            <div className="flex-1"><SearchBox placeholder="End: search, or click the map" pois={p.pois} value={p.to} onPick={p.setTo} onClear={() => p.setTo(null)} /></div>
+            <div className="flex-1"><SearchBox city={p.city} placeholder="End: search, or click the map" pois={p.pois} value={p.to} onPick={p.setTo} onClear={() => p.setTo(null)} /></div>
             {!p.to && <PickBtn on={() => p.setPick("to")} />}
           </div>
           {p.from && p.to && (
@@ -90,11 +87,11 @@ export function TripPanel(p: {
           )}
         </div>
 
-        {!p.from && !p.to && (
+        {!p.from && !p.to && p.city.examples.length > 0 && (
           <div className="mt-4">
             <p className="eyebrow mb-2">Try a trip</p>
             <div className="flex flex-wrap gap-2">
-              {EXAMPLES.map((ex) => (
+              {p.city.examples.map((ex) => (
                 <Btn key={ex.label} size="sm" variant="quiet" onClick={() => { p.setFrom(ex.from); p.setTo(ex.to); }}>{ex.label}</Btn>
               ))}
             </div>
@@ -105,7 +102,7 @@ export function TripPanel(p: {
         {p.routes && "error" in p.routes && (
           <Card className="mt-4">
             <p className="text-[0.85rem] font-semibold">
-              {p.routes.error === "far" ? "One of those points is outside DC's street network. Pick a spot inside DC."
+              {p.routes.error === "far" ? `One of those points is outside ${p.city.short}'s street network. Pick a spot inside ${p.city.short}.`
                 : p.routes.error === "same" ? "Start and destination are the same spot. Move one of them."
                 : "These two points are not connected by any street in our data. Try a nearby spot."}
             </p>
@@ -165,7 +162,7 @@ export function TripPanel(p: {
                         </button>
                         {isOpen && (
                           <div className="px-3.5 pb-3 animate-in fade-in duration-200">
-                            {!w && <p className="text-[0.82rem] text-ink-2">Loading RideScore DC street data…</p>}
+                            {!w && <p className="text-[0.82rem] text-ink-2">Loading {p.city.stress.name} street data…</p>}
                             {w === "error" && <p className="text-[0.82rem] text-ink-2">Could not load the street details. Try again.</p>}
                             {w && w !== "error" && (
                               <>
@@ -174,7 +171,7 @@ export function TripPanel(p: {
                                     <li key={r} className="rounded-full bg-surface px-2.5 py-1 text-[0.8rem] font-semibold">{r}</li>
                                   ))}
                                 </ul>
-                                {w.source === "ridescore" && (
+                                {w.source === "records" && w.crashes != null && (
                                   <p className="mt-2 text-[0.8rem] text-ink-2">
                                     {w.crashes > 0
                                       ? <>{w.crashes} reported crash{w.crashes > 1 ? "es" : ""} on these blocks in 5 years{w.serious + w.fatal > 0 ? `, ${w.serious + w.fatal} serious or fatal` : ""}.</>
@@ -198,8 +195,8 @@ export function TripPanel(p: {
 
         <footer className="mt-6 border-t border-line pt-3 text-[0.78rem] leading-relaxed text-ink-2">
           Built by <a className="underline underline-offset-2" href="https://www.linkedin.com/in/william-wei-zhu/" target="_blank" rel="noreferrer">William Zhu</a>
-          {" · "}Stress scores from <a className="underline underline-offset-2" href="https://ridescoredc.com" target="_blank" rel="noreferrer">RideScore DC</a> by Civic Tech DC
-          {" · "}<a className="underline underline-offset-2" href="/privacy">Privacy</a>
+          {" · "}Stress scores from <a className="underline underline-offset-2" href={p.city.stress.url} target="_blank" rel="noreferrer">{p.city.stress.name}</a>{p.city.stress.by && ` by ${p.city.stress.by}`}
+          {" · "}<Link className="underline underline-offset-2" href="/privacy">Privacy</Link>
         </footer>
       </div>
     </aside>

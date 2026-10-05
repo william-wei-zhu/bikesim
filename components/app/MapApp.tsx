@@ -5,7 +5,8 @@ import { ArrowDown, ArrowLeft } from "lucide-react";
 import type * as maplibregl from "maplibre-gl";
 import { loadNet, loadPois, loadBlocks, distM, nearestNode, edgeName, edgeMid, COMMUTER_LTS, type Net, type Poi, type BlockInfo } from "@/lib/engine/net";
 import { routePair, routeLine, stretches as toStretches, explainStretch, type Stretch, type StretchWhy } from "@/lib/engine/graph";
-import { createMap, addLayers, applyBasemapTheme, pauseImagery, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, DC_VIEW } from "@/lib/engine/map";
+import { createMap, addLayers, applyBasemapTheme, pauseImagery, applyPaint, setRouteGradient, setData, setEndpoints, setGhostPin, cityView, HOME_PITCH } from "@/lib/engine/map";
+import { cityDataBase, type City } from "@/lib/cities";
 import type { BikeLayer, BikeOverlay } from "@/lib/engine/bike3d";
 import { lineFC, EMPTY_FC } from "@/lib/engine/geom";
 import { createStreetView, streetViewZoom, streetViewHfov, STREETVIEW_BASE_PITCH, type StreetViewHandle } from "@/lib/engine/streetview";
@@ -37,7 +38,7 @@ function readUrl() {
   return { from: place("from"), to: place("to"), kind: (p.get("route") === "calm" ? "calm" : "short") as RouteKind };
 }
 
-export default function MapApp() {
+export default function MapApp({ city }: { city: City }) {
   const mapEl = useRef<HTMLDivElement>(null);
   const streetEl = useRef<HTMLDivElement>(null);
   const overlayEl = useRef<HTMLDivElement>(null);
@@ -76,18 +77,19 @@ export default function MapApp() {
   // ---------- data + map ----------
   useEffect(() => {
     let live = true;
-    loadNet().then((n) => live && setNet(n)).catch((e) => live && setLoadError(String(e.message || e)));
-    loadPois().then((x) => live && setPois(x)).catch(() => { /* search still works through the geocoder */ });
+    const base = cityDataBase(city);
+    loadNet(base).then((n) => live && setNet(n)).catch((e) => live && setLoadError(String(e.message || e)));
+    loadPois(base).then((x) => live && setPois(x)).catch(() => { /* search still works through the geocoder */ });
     return () => { live = false; };
-  }, [attempt]);
+  }, [attempt, city]);
 
   useEffect(() => {
     if (!mapEl.current || mapRef.current) return;
-    const map = createMap(mapEl.current, { flat: window.matchMedia("(max-width: 767px)").matches });
+    const map = createMap(mapEl.current, city, { flat: window.matchMedia("(max-width: 767px)").matches });
     mapRef.current = map;
     map.on("load", () => setMapReady(true));
     return () => { map.remove(); mapRef.current = null; };
-  }, []);
+  }, [city]);
 
   // ---------- route ----------
   const routes: Routes = useMemo(() => {
@@ -109,11 +111,11 @@ export default function MapApp() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !net || layersAdded.current) return;
-    addLayers(map, net);
+    addLayers(map, net, city);
     layersAdded.current = true;
     applyBasemapTheme(map, dark);
     applyPaint(map, { hasRoute: false });
-  }, [mapReady, net, dark]);
+  }, [mapReady, net, dark, city]);
   useEffect(() => { if (layersAdded.current && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [dark]);
   useEffect(() => { if (layersAdded.current && mapRef.current) pauseImagery(mapRef.current, riding); }, [riding]);
 
@@ -194,7 +196,7 @@ export default function MapApp() {
     const map = mapRef.current;
     if (map?.getLayer("rs-bike")) map.removeLayer("rs-bike");
     bikeRef.current = null;
-    if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: DC_VIEW.pitch, bearing: 0, duration: 1000 });
+    if (map && from && to) map.fitBounds([[Math.min(from.x, to.x), Math.min(from.y, to.y)], [Math.max(from.x, to.x), Math.max(from.y, to.y)]], { padding: 100, pitch: HOME_PITCH, bearing: 0, duration: 1000 });
   }, [from, to]);
 
   // Reached the end: back to the whole route (the camera pulls out), then the finish card.
@@ -251,19 +253,19 @@ export default function MapApp() {
   const shareRide = useCallback(async () => {
     const url = window.location.href;
     try {
-      if (navigator.share) { await navigator.share({ title: "RideSim DC", text: "Feel this DC bike trip before you ride it", url }); return; }
+      if (navigator.share) { await navigator.share({ title: `BikeSim ${city.short}`, text: `Feel this ${city.short} bike trip before you ride it`, url }); return; }
       await navigator.clipboard.writeText(url);
       toast("Link copied. Anyone who opens it gets this exact trip.");
     } catch { /* share sheet dismissed */ }
-  }, [toast]);
+  }, [toast, city]);
 
-  // "Why is this stretch hostile?": RideScore DC block facts, loaded on the first tap.
+  // "Why is this stretch hostile?": the city's block facts, loaded on the first tap.
   const blocksRef = useRef<Promise<BlockInfo[]> | null>(null);
   const explain = useCallback(async (s: Stretch): Promise<StretchWhy> => {
     if (!net) throw new Error("no network");
-    blocksRef.current ??= loadBlocks().catch((e) => { blocksRef.current = null; throw e; });
-    return explainStretch(net, s, await blocksRef.current);
-  }, [net]);
+    blocksRef.current ??= loadBlocks(cityDataBase(city)).catch((e) => { blocksRef.current = null; throw e; });
+    return explainStretch(net, s, await blocksRef.current, city.records);
+  }, [net, city]);
 
   const flyToStretch = useCallback((s: Stretch) => {
     if (!net) return;
@@ -272,16 +274,16 @@ export default function MapApp() {
       padding: window.innerWidth < 768 ? { bottom: window.innerHeight * 0.45, top: 0, left: 0, right: 0 } : { left: 440, top: 0, right: 0, bottom: 0 } });
   }, [net]);
 
-  // Logo click: back to the start screen (no trip, north-up DC view), even when already on "/".
+  // Logo click: back to the start screen (no trip, north-up city view), even when already on this city's page.
   const goHome = useCallback(() => {
     stopRide(); setFinished(null);
     setFrom(null); setTo(null); setPick(null); setKind("short");
     const map = mapRef.current;
     if (map) {
       setGhostPin(map, null);
-      map.flyTo({ ...DC_VIEW, pitch: window.matchMedia("(max-width: 767px)").matches ? 0 : DC_VIEW.pitch, duration: 1200 });
+      map.flyTo({ ...cityView(city), pitch: window.matchMedia("(max-width: 767px)").matches ? 0 : HOME_PITCH, duration: 1200 });
     }
-  }, [stopRide]);
+  }, [stopRide, city]);
   useEffect(() => {
     window.addEventListener("rs-home", goHome);
     return () => window.removeEventListener("rs-home", goHome);
@@ -328,15 +330,15 @@ export default function MapApp() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-paper">
-      <Header />
+      <Header city={city} />
       <div className="relative flex-1 overflow-hidden">
-        <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label="3D map of Washington, DC streets colored by bike stress" role="region" /></div>
+        <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label={`3D map of ${city.name} streets colored by bike stress`} role="region" /></div>
         {/* During the intro card the map's fly-down shows; the photos fade in once it ends (they load meanwhile). */}
         <div ref={streetEl} className={riding && view === "street" ? `absolute inset-0 z-[5] transition-opacity duration-500 ${intro ? "opacity-0" : "opacity-100"}` : "hidden"} aria-label="Street View along the route" />
         <div ref={overlayEl} className={riding && view === "street" ? `pointer-events-none absolute inset-0 z-[6] transition-opacity duration-500 ${intro ? "opacity-0" : "opacity-100"}` : "hidden"} />
-        {!net && <Loading error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
+        {!net && <Loading city={city} error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
         {net && !riding && !finished && (
-          <TripPanel pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
+          <TripPanel city={city} pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
             setPick={setPick} awaiting={awaiting} onRide={() => startRide()} onFlyTo={flyToStretch} onShare={shareRide} explain={explain} />
         )}
         {net && riding && rideFrame && (

@@ -119,12 +119,15 @@ export function stretches(net: Net, r: Route, nameOf: (e: number) => string): St
   return out;
 }
 
-export interface StretchWhy { reasons: string[]; crashes: number; serious: number; fatal: number; source: "ridescore" | "estimate" }
+/** crashes is null when the city's data has no crash counts. */
+export interface StretchWhy { reasons: string[]; crashes: number | null; serious: number; fatal: number; source: "records" | "estimate" }
 
-/** Plain-language reasons a stretch is stressful, from RideScore DC's block data (worst block wins). */
-export function explainStretch(net: Net, s: Stretch, blocks: BlockInfo[]): StretchWhy {
+/** Plain-language reasons a stretch is stressful, from the city's block data (worst block wins).
+ *  `records` names the source for the fallback note, e.g. "DDOT's street records". */
+export function explainStretch(net: Net, s: Stretch, blocks: BlockInfo[], records: string): StretchWhy {
   const seen = new Set<number>();
-  let speed = 0, speedEst = false, lanes = 0, crashes = 0, serious = 0, fatal = 0;
+  let speed = 0, speedEst = false, lanes = 0, serious = 0, fatal = 0;
+  let crashes: number | null = null;
   let facility = "", roadClass = "";
   for (const e of s.edges) {
     const b = net.eblock[e];
@@ -135,13 +138,14 @@ export function explainStretch(net: Net, s: Stretch, blocks: BlockInfo[]): Stret
     lanes = Math.max(lanes, x.lanes ?? 0);
     if (!facility || x.bikeFacility === "No bike lane") facility = x.bikeFacility;
     if (!roadClass && x.roadClass) roadClass = x.roadClass;
-    crashes += x.crashes; serious += x.serious; fatal += x.fatal;
+    if (x.crashes != null) crashes = (crashes ?? 0) + x.crashes;
+    serious += x.serious; fatal += x.fatal;
   }
-  if (!seen.size) return { reasons: ["Not in DDOT's street records, so stress is estimated from the road type"], crashes: 0, serious: 0, fatal: 0, source: "estimate" };
+  if (!seen.size) return { reasons: [`Not in ${records}, so stress is estimated from the road type`], crashes: null, serious: 0, fatal: 0, source: "estimate" };
   const reasons: string[] = [];
   if (speed) reasons.push(`${speed} mph speed limit${speedEst ? " (estimated)" : ""}`);
   if (lanes) reasons.push(`${lanes} travel lane${lanes > 1 ? "s" : ""}`);
   if (facility) reasons.push(facility === "No bike lane" ? "No bike lane" : facility);
   if (roadClass && /arterial|freeway|interstate/i.test(roadClass)) reasons.push(roadClass.replace("Principal/Primary", "Principal"));
-  return { reasons, crashes, serious, fatal, source: "ridescore" };
+  return { reasons, crashes, serious, fatal, source: "records" };
 }

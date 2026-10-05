@@ -1,8 +1,7 @@
-// Address search, bounded to DC, via OpenStreetMap Nominatim.
+// Address search, bounded to one city, via OpenStreetMap Nominatim.
 // Server-side so we can send a proper User-Agent (Nominatim policy), cache, and rate-limit.
 import type { NextRequest } from "next/server";
-
-const DC_VIEWBOX = "-77.12,38.995,-76.909,38.79";
+import { getCity } from "@/lib/cities";
 const cache = new Map<string, { at: number; body: unknown }>();
 const hits = new Map<string, number[]>();
 
@@ -24,25 +23,28 @@ function limited(ip: string) {
 
 export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get("q") || "").trim().slice(0, 120);
+  // Old clients (before cities) send no city: they were DC.
+  const city = getCity(req.nextUrl.searchParams.get("city") || "dc");
+  if (!city) return Response.json({ error: "Unknown city." }, { status: 400 });
   if (q.length < 3) return Response.json({ results: [] });
   if (limited(clientIp(req))) return Response.json({ error: "Too many searches. Wait a minute and try again." }, { status: 429 });
 
-  const key = q.toLowerCase();
+  const key = `${city.slug}:${q.toLowerCase()}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 86_400_000) return Response.json(hit.body);
 
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.search = new URLSearchParams({
-    q: /washington|\bdc\b/i.test(q) ? q : `${q}, Washington, DC`,
-    format: "jsonv2", limit: "6", viewbox: DC_VIEWBOX, bounded: "1", countrycodes: "us", addressdetails: "0",
+    q: namesCity(q, city.searchWords) ? q : `${q}${city.searchHint}`,
+    format: "jsonv2", limit: "6", viewbox: city.box.join(","), bounded: "1", countrycodes: "us", addressdetails: "0",
   }).toString();
   try {
-    const r = await fetch(url, { headers: { "User-Agent": "RideSimDC/1.0 (https://ridesimdc.com)", "Accept-Language": "en" } });
+    const r = await fetch(url, { headers: { "User-Agent": "BikeSim/1.0 (https://bikesim.org)", "Accept-Language": "en" } });
     if (!r.ok) throw new Error(String(r.status));
     const data = (await r.json()) as { display_name: string; lat: string; lon: string }[];
     const body = {
       results: data.map((d) => ({
-        label: d.display_name.replace(/, (Washington|District of Columbia|United States).*$/, ""),
+        label: shortLabel(d.display_name, city.searchHint.split(",")[1].trim()),
         x: Number(d.lon), y: Number(d.lat),
       })),
     };
@@ -51,4 +53,16 @@ export async function GET(req: NextRequest) {
   } catch {
     return Response.json({ error: "Address search is unavailable right now. Pick a spot on the map instead." }, { status: 502 });
   }
+}
+
+/** True when the search already names the city ("Pike Place, Seattle"), so no hint is appended. */
+function namesCity(q: string, words: string[]) {
+  const t = ` ${q.toLowerCase().replace(/[^a-z ]/g, " ")} `;
+  return words.some((w) => t.includes(` ${w} `));
+}
+
+/** Drop the city, county, state and country tail Nominatim adds: "1600 Pennsylvania Ave NW, Washington, ..." */
+function shortLabel(name: string, cityName: string) {
+  const i = name.indexOf(`, ${cityName}`);
+  return (i > 0 ? name.slice(0, i) : name).replace(/, (District of Columbia|United States).*$/, "");
 }

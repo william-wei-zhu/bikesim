@@ -10,11 +10,11 @@ const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["lati
 const TAGLINE = "Feel it before you ride it.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ridesimdc.com"),
-  title: { default: `RideSim DC: ${TAGLINE}`, template: "%s · RideSim DC" },
-  description: TAGLINE,
-  openGraph: { title: "RideSim DC", description: TAGLINE, url: "https://ridesimdc.com", siteName: "RideSim DC", type: "website" },
-  twitter: { card: "summary_large_image", title: "RideSim DC", description: TAGLINE },
+  metadataBase: new URL("https://bikesim.org"),
+  title: { default: `BikeSim: ${TAGLINE}`, template: "%s · BikeSim" },
+  description: "See how stressful every block of a city bike trip will be, then ride it virtually before you go.",
+  openGraph: { title: "BikeSim", description: TAGLINE, url: "https://bikesim.org", siteName: "BikeSim", type: "website" },
+  twitter: { card: "summary_large_image", title: "BikeSim", description: TAGLINE },
 };
 
 export const viewport: Viewport = {

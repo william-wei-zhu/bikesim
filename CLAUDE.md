@@ -1,13 +1,14 @@
 @AGENTS.md
 
-# RideSim DC (ridesimdc.com)
+# BikeSim (bikesim.org), formerly RideSim DC (ridesimdc.com)
 
-"Feel it before you ride it." Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually through Google Street View photos (default) or in our 3D model. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
+"Feel it before you ride it." Now multi-city (see Decisions, 2026-10-05); the DC history below still applies to DC. Pain point: people who want to bike in DC can't tell what a trip will feel like before they go; maps show a line, not that block 3 is a six-lane arterial. RideSim is one feature, a ride simulator: pick a trip, see the stress of every block (RideScore DC LTS), then ride it virtually through Google Street View photos (default) or in our 3D model. Built on RideScore DC data for the Civic Tech DC hackathon (Oct 3, 2026). UI/UX and build conventions follow William's Web App Building Standard: https://github.com/william-wei-zhu/web-app-building-standard
 
 ## Layout
-- `app/` Next.js 16 App Router. `/` is the map app (client-only via `components/app/MapAppLoader.tsx`). `app/api/geocode` proxies Nominatim (DC-bounded, per-IP limit, 24h in-memory cache).
+- `lib/cities.ts` city registry (view, city box, search hint, stress credit, examples, aerial tiles, `live`). Every city-specific value lives here.
+- `app/` Next.js 16 App Router. `/` is the city picker (`components/CityPicker.tsx`); `/[city]` is the map app (client-only via `components/app/MapAppLoader.tsx`, static for live cities, 404 otherwise). `app/api/geocode?city=` proxies Nominatim (bounded to the city box, per-IP limit, 24h in-memory cache; no city means DC).
 - `lib/engine/` framework-free TypeScript (no React imports):
-  - `net.ts` loads `/data/network.json` into typed arrays + CSR adjacency + grid index; `COMMUTER_LTS = 3` is the only rider.
+  - `net.ts` loads `/data/<city>/network.json` into typed arrays + CSR adjacency + grid index; `COMMUTER_LTS = 3` is the only rider.
   - `graph.ts` Dijkstra routing (`routePair`: shortest + lowest-stress with a 25x penalty on LTS 4; leftover LTS 4 edges are the unavoidable hostile stretches) and `stretches()` (route split by stress + street).
   - `geom.ts` street lines built in the browser.
   - `map.ts` MapLibre layers: flat stress-colored streets, white 3D buildings, route with a stress `line-gradient`, Start/End pins.
@@ -15,7 +16,7 @@
   - `streetview.ts` Google StreetViewPanorama that follows the rider (lazy).
 - `app/about`, `app/privacy`, `app/settings` (theme, default ride view, rider male/female; saved via `lib/prefs.ts` in localStorage); content pages share `components/SiteFrame.tsx`.
 - `components/app/`: `MapApp` (state, views), `TripPanel` (trip inputs, start button, route choice, stress bar, hostile stretches), `RideHud` (stress meter, view and speed switches).
-- `public/data/`: `network.json`, `pois.json` (search suggestions), `meta.json` from `ridescoredc-models/notebooks/ridesim/prep.py`.
+- `public/data/<city>/`: `network.json`, `pois.json` (search suggestions), `blocks.json`, `meta.json`. DC from `ridescoredc-models/notebooks/ridesim/prep.py`; other cities from the bikesim-data pipeline in the same format. Old `/data/*.json` paths rewrite to `/data/dc/` (next.config.ts).
 - Theme tokens derive from the logo: `../brand/THEME.md` is the source of truth; `app/globals.css` mirrors it.
 
 ## Decisions (with dates)
@@ -65,6 +66,7 @@
 - 2026-10-03: Maps key hardening (project ridesimdc). Key "RideSim DC 3D tiles (browser)" is limited to Maps JavaScript (`maps-backend`) and referrers ridesimdc.com, www.ridesimdc.com, localhost:3311 and localhost:3000. The `*.vercel.app` referrer was removed (anyone can host a vercel.app site), so Street View does not work on Vercel preview URLs. The unused Google photorealistic 3D quota (`3d_billable_default`, previously unlimited per day) was set to 0. Street View daily cap stays `billable_default` = 1500 for Oct 3, then back to 300.
 - 2026-10-03: Street View photos are looked up with `StreetViewService.getPanorama` (radius 40 m, nearest, `sources: [GOOGLE, OUTDOOR]`, which Google evaluates as the intersection: official car imagery that is outdoors), then shown with `setPano`. Before, `setPosition` took the nearest panorama of any kind, so rides sometimes cut to indoor shots or user photo spheres. A point with no outdoor Google photo counts as "no photo" (`slot.none`) and the ride doesn't wait for it. Still 3 panorama loads per session.
 - 2026-10-03: Street View seek jumps straight to the new spot. A jump of more than one photo (dragging the progress bar, forward or back) freezes the current photo, waits 250 ms for the drag to settle (`SEEK_SETTLE_MS`), then `resync` loads the new spot into the two hidden slots and crossfades once. Before, `follow` stepped through every photo in between (hundreds of lookups and tile downloads, laggy and glitchy), and seeking backward never changed the photo. `epoch` stops a pending recycle from overwriting a resynced slot; `tryAdvance` also runs when a photo finishes loading, so a seek while paused still lands.
+- 2026-10-05: Going national as BikeSim (bikesim.org), same repo (William). Cities at `bikesim.org/<city>`; `/` is a city picker. Old DC trip links (`/?from=..&to=..`) and the ridesimdc.com home redirect to `/dc` keeping the query. First wave: DC live; Seattle, Portland, San Francisco, Los Angeles, Chicago, Austin, Pittsburgh, Boston, New York City, Philadelphia, Minneapolis, Denver listed as coming soon until their data is built. Stress for new cities: OpenStreetMap-based LTS (same inputs as the DC rules: facility, speed, lanes, road class), overridden by official Furth 1-4 layers where they exist (Boston BLTS, DVRPC for Philadelphia, Cook County for Chicago). Data pipeline lives in a separate repo (bikesim-data). `blocks.json` crash columns are optional (null hides the crash line). The aerial photo button shows only for cities with `aerial` tiles. Logo still shows the Capitol and "RideSim DC": needs a national mark.
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); data is static JSON, not Firestore; Settings has theme, default ride view and rider only (no accounts, so no notification/account rows).
 
 ## Scaling cliff

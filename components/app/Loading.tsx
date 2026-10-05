@@ -2,16 +2,16 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Btn } from "@/components/ui";
+import type { City } from "@/lib/cities";
 
-const PHASES = ["Loading 28,121 DC street segments…", "Joining RideScore DC stress scores…", "Building DC in 3D…"];
-
-export function Loading({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+export function Loading({ city, error, onRetry }: { city: City; error: string | null; onRetry: () => void }) {
+  const PHASES = [`Loading ${city.short} streets…`, `Joining ${city.stress.name} stress scores…`, `Building ${city.short} in 3D…`];
   const [i, setI] = useState(0);
   useEffect(() => {
     if (error) return;
     const id = setInterval(() => setI((x) => Math.min(x + 1, PHASES.length - 1)), 900);
     return () => clearInterval(id);
-  }, [error]);
+  }, [error, PHASES.length]);
   return (
     <div className="absolute inset-0 z-30 grid place-items-center bg-paper/90 p-6">
       <div className="w-full max-w-sm rounded-card border border-line bg-paper p-6 text-center shadow-panel">

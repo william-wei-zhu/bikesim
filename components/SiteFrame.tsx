@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Header } from "@/components/app/Header";
 
-/** Layout for content pages (About, Privacy, Settings): header, readable column, footer. */
-export function SiteFrame({ children }: { children: React.ReactNode }) {
+/** Layout for content pages (Home, About, Privacy, Settings): header, readable column, footer. */
+export function SiteFrame({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className="mx-auto max-w-2xl px-5 pb-16 pt-10 md:pt-14">
+      <main className={`mx-auto px-5 pb-16 pt-10 md:pt-14 ${wide ? "max-w-5xl" : "max-w-2xl"}`}>
         {children}
       </main>
       <footer className="border-t border-line">
@@ -15,7 +15,10 @@ export function SiteFrame({ children }: { children: React.ReactNode }) {
             Built by <a className="underline underline-offset-2" href="https://www.linkedin.com/in/william-wei-zhu/" target="_blank" rel="noreferrer">William Zhu</a>
           </span>
           <span>
-            Stress scores from <a className="underline underline-offset-2" href="https://ridescoredc.com" target="_blank" rel="noreferrer">RideScore DC</a> by Civic Tech DC
+            DC stress scores from <a className="underline underline-offset-2" href="https://ridescoredc.com" target="_blank" rel="noreferrer">RideScore DC</a> by Civic Tech DC
+          </span>
+          <span>
+            Streets <a className="underline underline-offset-2" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
           </span>
           <Link className="underline underline-offset-2" href="/about">About</Link>
           <Link className="underline underline-offset-2" href="/privacy">Privacy</Link>

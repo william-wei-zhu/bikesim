@@ -2,24 +2,26 @@
 import * as maplibregl from "maplibre-gl";
 import type { Net } from "./net";
 import { streetLines, EMPTY_FC, LTS_COLOR } from "./geom";
+import { cityMaxBounds, type City } from "../cities";
 
-// Opens over downtown and the Mall so the 3D city reads immediately (buildings appear from zoom 13).
-export const DC_VIEW = { center: [-77.0275, 38.8975] as [number, number], zoom: 13.4, pitch: 58, bearing: 0 }; // north up
+/** Opening tilt: enough for the 3D buildings to read, north up (bearing 0). */
+export const HOME_PITCH = 58;
+export const cityView = (c: City) => ({ center: c.center, zoom: c.zoom, pitch: HOME_PITCH, bearing: 0 });
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 let workerSet = false;
 
-export function createMap(container: HTMLElement, opts: { flat: boolean }) {
+export function createMap(container: HTMLElement, city: City, opts: { flat: boolean }) {
   if (!workerSet) { maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs"); workerSet = true; }
   const map = new maplibregl.Map({
-    container, style: STYLE_URL, ...DC_VIEW, pitch: opts.flat ? 0 : DC_VIEW.pitch, maxPitch: 75,
-    attributionControl: { compact: true }, maxBounds: [[-77.35, 38.70], [-76.75, 39.08]],
+    container, style: STYLE_URL, ...cityView(city), pitch: opts.flat ? 0 : HOME_PITCH, maxPitch: 75,
+    attributionControl: { compact: true }, maxBounds: cityMaxBounds(city),
     // antialias smooths building edges; preserveDrawingBuffer only in dev so headless screenshots are reliable.
     canvasContextAttributes: { antialias: true, preserveDrawingBuffer: process.env.NODE_ENV !== "production" },
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
   // On phones the trip sheet covers the bottom corner, so the photo button moves to the top, under the step prompt.
-  map.addControl(new ImageryControl(), window.matchMedia("(max-width: 767px)").matches ? "top-right" : "bottom-right");
+  if (city.aerial) map.addControl(new ImageryControl(), window.matchMedia("(max-width: 767px)").matches ? "top-right" : "bottom-right");
   if (process.env.NODE_ENV !== "production") (window as unknown as { __rsMap: maplibregl.Map }).__rsMap = map;
   return map;
 }
@@ -69,8 +71,7 @@ export function applyBasemapTheme(map: maplibregl.Map, dark: boolean) {
   }
 }
 
-// DC government's 2025 aerial photos (the same imagery RideScore DC's Imagery button uses). Free, public, DC only.
-const ORTHO_TILES = "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Ortho2025_WebMercator/MapServer/tile/{z}/{y}/{x}";
+// Aerial photos come from a city's own free tile service (City.aerial); cities without one get no photo button.
 const AERIAL_KEY = "rs-aerial";
 const readAerial = () => { try { return localStorage.getItem(AERIAL_KEY) === "1"; } catch { return false; } };
 
@@ -120,7 +121,7 @@ class ImageryControl implements maplibregl.IControl {
 }
 
 /** Add all RideSim sources and layers. Call once after the style loads. */
-export function addLayers(map: maplibregl.Map, net: Net) {
+export function addLayers(map: maplibregl.Map, net: Net, city: City) {
   const firstLabel = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
   map.addSource("rs-streets", { type: "geojson", data: streetLines(net) });
   map.addSource("rs-route-fast", { type: "geojson", data: EMPTY_FC });
@@ -128,9 +129,11 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });
 
   // Aerial photos sit above the basemap's fills and roads, below the stress lines and the labels.
-  map.addSource("rs-aerial", { type: "raster", tiles: [ORTHO_TILES], tileSize: 256, maxzoom: 20,
-    bounds: [-77.12, 38.79, -76.909, 38.996], attribution: "Aerial photos © DC Office of the Chief Technology Officer" });
-  map.addLayer({ id: "rs-aerial", type: "raster", source: "rs-aerial", layout: { visibility: "none" } }, firstLabel);
+  if (city.aerial) {
+    map.addSource("rs-aerial", { type: "raster", tiles: [city.aerial.tiles], tileSize: 256, maxzoom: 20,
+      bounds: city.aerial.bounds, attribution: city.aerial.attribution });
+    map.addLayer({ id: "rs-aerial", type: "raster", source: "rs-aerial", layout: { visibility: "none" } }, firstLabel);
+  }
 
   const ltsColor = ["match", ["get", "lts"], 1, LTS_COLOR[1], 2, LTS_COLOR[2], 3, LTS_COLOR[3], 4, LTS_COLOR[4], "#999"];
   map.addLayer({
@@ -139,7 +142,7 @@ export function addLayers(map: maplibregl.Map, net: Net) {
   }, firstLabel);
   map.addLayer({ id: "rs-break", type: "line", source: "rs-break", layout: { "line-cap": "round" },
     paint: { "line-color": "#e5484d", "line-width": ["interpolate", ["linear"], ["zoom"], 11, 6, 16, 14], "line-opacity": 0.55, "line-blur": 2 } });
-  // DC in 3D: OSM building footprints (from DC government data) with real heights, as a white scale model.
+  // The city in 3D: OSM building footprints with real heights (DC's came from DC government data), as a white scale model.
   if (map.getLayer("building")) map.setLayoutProperty("building", "visibility", "none");
   map.addLayer({
     id: "rs-buildings", type: "fill-extrusion", source: "openmaptiles", "source-layer": "building", minzoom: 13,

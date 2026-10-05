@@ -3,7 +3,7 @@ import { SiteFrame, Section } from "@/components/SiteFrame";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "RideSim DC has no accounts and stores no personal data. What is sent where, and what the site is not.",
+  description: "BikeSim has no accounts and stores no personal data. What is sent where, and what the site is not.",
 };
 
 export default function PrivacyPage() {
@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <SiteFrame>
       <h1 className="text-[2rem] font-bold md:text-[2.6rem]">No accounts, no personal data stored.</h1>
       <p className="mt-4 text-[1.1rem] leading-[1.7]">
-        RideSim DC does not ask who you are and does not keep a record of the trips you plan.
+        BikeSim does not ask who you are and does not keep a record of the trips you plan.
       </p>
 
       <Section title="Your trip stays in your browser">
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
 
       <Section title="Informational only">
         <p>
-          RideSim DC is an informational planning tool, not safety, legal or professional advice. Stress scores are estimates from public data
+          BikeSim is an informational planning tool, not safety, legal or professional advice. Stress scores are estimates from public data
           and can be wrong or out of date. Street conditions change. Verify conditions yourself and ride with care.
         </p>
       </Section>

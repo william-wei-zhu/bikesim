@@ -2,14 +2,13 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Search, X } from "lucide-react";
 import type { Poi } from "@/lib/engine/net";
+import type { City } from "@/lib/cities";
 
 export interface Place { label: string; x: number; y: number }
 
-const POI_LABEL: Record<string, string> = { school: "School", library: "Library", metro: "Metro", rec: "Rec center" };
-
-/** Address search: instant matches from DC schools / libraries / Metro / rec centers, then the geocoder. */
-export function SearchBox({ placeholder, pois, value, onPick, onClear, autoFocus }: {
-  placeholder: string; pois: Poi[]; value?: Place | null; onPick: (p: Place) => void; onClear?: () => void; autoFocus?: boolean;
+/** Address search: instant matches from the city's schools / libraries / transit / rec centers, then the geocoder. */
+export function SearchBox({ city, placeholder, pois, value, onPick, onClear, autoFocus }: {
+  city: City; placeholder: string; pois: Poi[]; value?: Place | null; onPick: (p: Place) => void; onClear?: () => void; autoFocus?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -19,6 +18,7 @@ export function SearchBox({ placeholder, pois, value, onPick, onClear, autoFocus
   const [active, setActive] = useState(0);
   const box = useRef<HTMLDivElement>(null);
 
+  const POI_LABEL: Record<string, string> = { school: "School", library: "Library", metro: city.transit, rec: "Rec center" };
   const local: Place[] = q.trim().length >= 2
     ? pois.filter((p) => p.n.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 5)
         .map((p) => ({ label: `${p.n} (${POI_LABEL[p.t]})`, x: p.x, y: p.y }))
@@ -32,7 +32,7 @@ export function SearchBox({ placeholder, pois, value, onPick, onClear, autoFocus
     const id = setTimeout(async () => {
       setStatus("loading");
       try {
-        const r = await fetch(`/api/geocode?q=${encodeURIComponent(t)}`, { signal: ctl.signal });
+        const r = await fetch(`/api/geocode?city=${city.slug}&q=${encodeURIComponent(t)}`, { signal: ctl.signal });
         const j = await r.json();
         if (!r.ok) { setStatus("error"); setMsg(j.error || "Search failed."); setRemote([]); return; }
         setRemote(j.results);
@@ -42,7 +42,7 @@ export function SearchBox({ placeholder, pois, value, onPick, onClear, autoFocus
       }
     }, 450);
     return () => { clearTimeout(id); ctl.abort(); };
-  }, [q]);
+  }, [q, city.slug]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
@@ -94,8 +94,8 @@ export function SearchBox({ placeholder, pois, value, onPick, onClear, autoFocus
               {r.label}
             </button>
           ))}
-          {status === "loading" && <p className="px-4 py-2.5 text-[0.78rem] text-ink-2">Searching DC addresses…</p>}
-          {status === "empty" && !local.length && <p className="px-4 py-2.5 text-[0.78rem] text-ink-2">No DC match. Try a street address, or pick a spot on the map.</p>}
+          {status === "loading" && <p className="px-4 py-2.5 text-[0.78rem] text-ink-2">Searching {city.short} addresses…</p>}
+          {status === "empty" && !local.length && <p className="px-4 py-2.5 text-[0.78rem] text-ink-2">No {city.short} match. Try a street address, or pick a spot on the map.</p>}
           {status === "error" && <p className="px-4 py-2.5 text-[0.78rem] text-ink-2">{msg}</p>}
         </div>
       )}

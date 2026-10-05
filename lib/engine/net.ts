@@ -1,4 +1,5 @@
-// Street network loaded from /data/*.json (built by ridescoredc-models notebooks/ridesim/prep.py).
+// Street network loaded from /data/<city>/*.json (DC: ridescoredc-models notebooks/ridesim/prep.py;
+// other cities: the bikesim-data pipeline, same schema).
 // Framework-free on purpose: this module must port to the RideScore no-build page.
 
 export type PoiType = "school" | "library" | "metro" | "rec";
@@ -30,7 +31,7 @@ export interface Net {
 interface Grid { x0: number; y0: number; cell: number; nx: number; ny: number; cells: Map<number, number[]> }
 
 type RawNetwork = {
-  nodes: { lon: number[]; lat: number[]; pop: number[]; ward: number[] };
+  nodes: { lon: number[]; lat: number[]; pop?: number[]; ward?: number[] };
   edges: [number, number, number, number, number, number, number, number[]][];
   names: string[]; src: string[];
 };
@@ -41,13 +42,13 @@ async function getJson<T>(url: string): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export async function loadNet(base = "/data"): Promise<Net> {
+export async function loadNet(base: string): Promise<Net> {
   const raw = await getJson<RawNetwork>(`${base}/network.json`);
   const nN = raw.nodes.lon.length, nE = raw.edges.length;
   const net: Net = {
     nNodes: nN, nEdges: nE,
     lon: Float64Array.from(raw.nodes.lon), lat: Float64Array.from(raw.nodes.lat),
-    pop: Int32Array.from(raw.nodes.pop), ward: Int8Array.from(raw.nodes.ward),
+    pop: Int32Array.from(raw.nodes.pop ?? []), ward: Int8Array.from(raw.nodes.ward ?? []),
     eu: new Int32Array(nE), ev: new Int32Array(nE), elen: new Float32Array(nE), elts: new Int8Array(nE),
     esrc: new Int8Array(nE), ename: new Int32Array(nE), eblock: new Int32Array(nE), ecoords: new Array(nE),
     names: raw.names, src: raw.src,
@@ -73,19 +74,20 @@ export async function loadNet(base = "/data"): Promise<Net> {
   return net;
 }
 
-/** Named DC places (schools, libraries, Metro, rec centers) for instant search suggestions. */
-export async function loadPois(base = "/data"): Promise<Poi[]> {
+/** Named places (schools, libraries, transit stations, rec centers) for instant search suggestions. */
+export async function loadPois(base: string): Promise<Poi[]> {
   return getJson<Poi[]>(`${base}/pois.json`);
 }
 
-/** RideScore DC facts for one DDOT block (from blocks.json, indexed by Net.eblock). */
+/** Street facts for one block (from blocks.json, indexed by Net.eblock). DC: RideScore DC's DDOT blocks.
+ *  Crash counts are null where the city's data has none. */
 export interface BlockInfo {
   speedLimit: number | null; speedEstimated: boolean; lanes: number | null; bikeFacility: string;
-  roadClass: string | null; crashes: number; serious: number; fatal: number;
+  roadClass: string | null; crashes: number | null; serious: number; fatal: number;
 }
 
 /** Loaded on demand (first "why" tap) so it never slows the first page load. */
-export async function loadBlocks(base = "/data"): Promise<BlockInfo[]> {
+export async function loadBlocks(base: string): Promise<BlockInfo[]> {
   const raw = await getJson<{ cols: string[]; rows: unknown[][] }>(`${base}/blocks.json`);
   const c = (name: string) => raw.cols.indexOf(name);
   const [sp, sf, ln, bf, fn, cr, se, fa] = ["speed_limit", "speed_filled", "num_lanes", "bike_facility_type", "function",
@@ -93,7 +95,7 @@ export async function loadBlocks(base = "/data"): Promise<BlockInfo[]> {
   return raw.rows.map((r) => ({
     speedLimit: (r[sp] as number | null) ?? null, speedEstimated: !!r[sf], lanes: (r[ln] as number | null) ?? null,
     bikeFacility: String(r[bf] ?? "No bike lane"), roadClass: (r[fn] as string | null) ?? null,
-    crashes: Number(r[cr] ?? 0), serious: Number(r[se] ?? 0), fatal: Number(r[fa] ?? 0),
+    crashes: cr < 0 || r[cr] == null ? null : Number(r[cr]), serious: Number(r[se] ?? 0), fatal: Number(r[fa] ?? 0),
   }));
 }
 
@@ -104,6 +106,7 @@ function buildGrid(net: Net) {
     x0 = Math.min(x0, net.lon[n]); y0 = Math.min(y0, net.lat[n]);
     x1 = Math.max(x1, net.lon[n]); y1 = Math.max(y1, net.lat[n]);
   }
+  setLatitude((y0 + y1) / 2);
   g.x0 = x0; g.y0 = y0; g.nx = Math.ceil((x1 - x0) / g.cell) + 1; g.ny = Math.ceil((y1 - y0) / g.cell) + 1;
   for (let n = 0; n < net.nNodes; n++) {
     const k = cellKey(g, net.lon[n], net.lat[n]);
@@ -117,7 +120,9 @@ function cellKey(g: Grid, x: number, y: number) {
 }
 
 const M_PER_DEG_LAT = 110_540;
-const M_PER_DEG_LON = 111_320 * Math.cos((38.9 * Math.PI) / 180);
+// Metres per degree of longitude shrink with latitude; set from the loaded city's network.
+let M_PER_DEG_LON = 111_320 * Math.cos((38.9 * Math.PI) / 180);
+function setLatitude(lat: number) { M_PER_DEG_LON = 111_320 * Math.cos((lat * Math.PI) / 180); }
 
 /** Approximate metres between two lon/lat points (fine at city scale). */
 export function distM(x1: number, y1: number, x2: number, y2: number) {
@@ -147,7 +152,7 @@ export function nearestNode(net: Net, x: number, y: number, maxM = 600, ok?: (n:
 }
 
 const SMALL = new Set(["of", "the", "and", "at", "on"]);
-/** DDOT names arrive in capitals ("SUITLAND PARKWAY TRAIL SE"); show them in title case, keep quadrants. */
+/** Some sources send names in capitals (DDOT: "SUITLAND PARKWAY TRAIL SE"); show them in title case, keep DC quadrants. */
 export function tidyName(n: string) {
   if (!n || n !== n.toUpperCase()) return n;
   return n.toLowerCase().split(" ").map((w, i) =>

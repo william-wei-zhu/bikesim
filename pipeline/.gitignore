@@ -1,0 +1,5 @@
+out/
+*.osm.pbf
+sources/
+.venv/
+__pycache__/

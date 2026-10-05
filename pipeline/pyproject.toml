@@ -1,0 +1,22 @@
+[project]
+name = "bikesim-data"
+version = "0.1.0"
+description = "Street network and bike stress (LTS) data for BikeSim cities, from OpenStreetMap"
+readme = "README.md"
+authors = [{ name = "William Zhu" }]
+requires-python = ">=3.11"
+dependencies = [
+    "osmium>=4.3.1",
+]
+
+[project.scripts]
+bikesim-data = "bikesim_data.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

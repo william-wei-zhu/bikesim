@@ -1,0 +1,87 @@
+# One entry per city. box = city limits [west, south, east, north] (matches lib/cities.ts in the app).
+# default_mph = posted limit on unsigned local streets (used when OSM has no maxspeed).
+# Defaults marked "verify" need a check against the city's current ordinance before launch.
+# pbf = Geofabrik extract that covers the city.
+
+[city.dc]
+name = "Washington, DC"
+box = [-77.12, 38.79, -76.909, 38.996]
+default_mph = 20
+pbf = "https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf"
+
+[city.seattle]
+name = "Seattle"
+box = [-122.46, 47.48, -122.22, 47.74]
+default_mph = 20   # residential 20, arterials 25 unless posted
+pbf = "https://download.geofabrik.de/north-america/us/washington-latest.osm.pbf"
+
+[city.portland]
+name = "Portland"
+box = [-122.84, 45.43, -122.47, 45.66]
+default_mph = 20
+pbf = "https://download.geofabrik.de/north-america/us/oregon-latest.osm.pbf"
+
+[city.san-francisco]
+name = "San Francisco"
+box = [-122.52, 37.70, -122.35, 37.84]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/california/norcal-latest.osm.pbf"
+
+[city.los-angeles]
+name = "Los Angeles"
+box = [-118.67, 33.70, -118.15, 34.34]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/california/socal-latest.osm.pbf"
+
+[city.chicago]
+name = "Chicago"
+box = [-87.94, 41.64, -87.52, 42.03]
+default_mph = 30   # citywide default; verify
+pbf = "https://download.geofabrik.de/north-america/us/illinois-latest.osm.pbf"
+# Cook County LTS 2022 (OSM-based, carries way_id). Export
+# https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/13 to GeoJSON first.
+overrides = [{ name = "Cook County LTS 2022", path = "sources/chicago/cook_lts_2022.geojson", way_id = "way_id", lts = "ltsrank" }]
+
+[city.austin]
+name = "Austin"
+box = [-97.94, 30.10, -97.56, 30.52]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf"
+
+[city.pittsburgh]
+name = "Pittsburgh"
+box = [-80.10, 40.36, -79.86, 40.51]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/pennsylvania-latest.osm.pbf"
+
+[city.boston]
+name = "Boston"
+box = [-71.19, 42.23, -70.99, 42.40]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/massachusetts-latest.osm.pbf"
+# Official: Boston BLTS 2024 (boston.gov/blts). Needs a spatial join to OSM ways (not built yet).
+
+[city.new-york]
+name = "New York City"
+box = [-74.26, 40.49, -73.70, 40.92]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf"
+
+[city.philadelphia]
+name = "Philadelphia"
+box = [-75.28, 39.87, -74.96, 40.14]
+default_mph = 25
+pbf = "https://download.geofabrik.de/north-america/us/pennsylvania-latest.osm.pbf"
+# Official: DVRPC LTS Network (catalog.dvrpc.org). Needs a spatial join to OSM ways (not built yet).
+
+[city.minneapolis]
+name = "Minneapolis"
+box = [-93.33, 44.89, -93.19, 45.06]
+default_mph = 20
+pbf = "https://download.geofabrik.de/north-america/us/minnesota-latest.osm.pbf"
+
+[city.denver]
+name = "Denver"
+box = [-105.11, 39.61, -104.60, 39.91]
+default_mph = 25   # verify
+pbf = "https://download.geofabrik.de/north-america/us/colorado-latest.osm.pbf"

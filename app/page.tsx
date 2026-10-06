@@ -25,8 +25,8 @@ export default function Home() {
           </ol>
         </div>
         <figure className="relative">
-          <Image src="/home/hero.jpg" alt="A ride in BikeSim: a 3D rider on a stress-colored route through a white model of the city"
-            width={1200} height={900} priority className="aspect-[4/3] w-full rounded-card border border-line object-cover shadow-panel" />
+          <Image src="/home/hero.jpg" alt="A BikeSim ride in Georgetown, DC: a 3D rider on a calm green street, the route turning orange and red ahead"
+            width={1600} height={1114} priority className="aspect-[1600/1114] w-full rounded-card border border-line object-cover shadow-panel" />
           <figcaption className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-paper/95 px-3 py-1.5 text-[0.78rem] font-semibold shadow-panel">
             <span className="flex h-2 w-14 overflow-hidden rounded-full" aria-hidden>
               <span className="flex-1 bg-lts1" /><span className="flex-1 bg-lts2" /><span className="flex-1 bg-lts3" /><span className="flex-1 bg-lts4" />

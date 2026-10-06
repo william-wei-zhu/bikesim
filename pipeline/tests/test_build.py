@@ -8,7 +8,7 @@ CITY = City(slug="tiny", name="Tiny", box=(-80.01, 39.99, -79.98, 40.01), defaul
 
 
 def test_build_writes_the_app_schema(tmp_path):
-    meta = build(CITY, FIX, tmp_path)
+    meta = build(CITY, FIX, tmp_path, legacy_json=True)
     net = json.loads((tmp_path / "network.json").read_text())
     blocks = json.loads((tmp_path / "blocks.json").read_text())
     names = net["names"]
@@ -33,3 +33,16 @@ def test_build_writes_the_app_schema(tmp_path):
     pois = json.loads((tmp_path / "pois.json").read_text())
     assert {(p["t"], p["n"]) for p in pois} == {("school", "Tiny Elementary"), ("metro", "Tiny Station")}
     assert all(p["d"] < 100 for p in pois)
+
+
+def test_binary_round_trip(tmp_path):
+    from bikesim_data.binary import read_network_bin
+
+    build(CITY, FIX, tmp_path, legacy_json=True)
+    js = json.loads((tmp_path / "network.json").read_text())
+    bn = read_network_bin(tmp_path / "network.bin")
+    assert bn["names"] == js["names"] and bn["src"] == js["src"]
+    assert len(bn["edges"]) == len(js["edges"])
+    for a, b in zip(js["edges"], bn["edges"]):
+        assert a[:2] == b[:2] and a[3:7] == b[3:7] and abs(a[2] - b[2]) < 0.05
+        assert all(abs(x - y) < 2e-6 for x, y in zip(a[7], b[7]))

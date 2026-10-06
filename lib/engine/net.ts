@@ -42,23 +42,68 @@ async function getJson<T>(url: string): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export async function loadNet(base: string): Promise<Net> {
+/** Loads `network.bin` (compact typed arrays, see pipeline/src/bikesim_data/binary.py) when the city has one,
+ *  else the original `network.json`. */
+export async function loadNet(base: string, format: "bin" | "json" = "json"): Promise<Net> {
+  if (format === "bin") {
+    const r = await fetch(`${base}/network.bin`);
+    if (!r.ok) throw new Error(`Could not load ${base}/network.bin (${r.status})`);
+    return finishNet(parseNetBin(await r.arrayBuffer()));
+  }
   const raw = await getJson<RawNetwork>(`${base}/network.json`);
   const nN = raw.nodes.lon.length, nE = raw.edges.length;
-  const net: Net = {
-    nNodes: nN, nEdges: nE,
-    lon: Float64Array.from(raw.nodes.lon), lat: Float64Array.from(raw.nodes.lat),
-    pop: Int32Array.from(raw.nodes.pop ?? []), ward: Int8Array.from(raw.nodes.ward ?? []),
-    eu: new Int32Array(nE), ev: new Int32Array(nE), elen: new Float32Array(nE), elts: new Int8Array(nE),
-    esrc: new Int8Array(nE), ename: new Int32Array(nE), eblock: new Int32Array(nE), ecoords: new Array(nE),
-    names: raw.names, src: raw.src,
-    adjStart: new Int32Array(nN + 1), adjE: new Int32Array(2 * nE), adjN: new Int32Array(2 * nE),
-    totalPop: 0, grid: { x0: 0, y0: 0, cell: 0.004, nx: 0, ny: 0, cells: new Map() },
-  };
+  const net = emptyNet(nN, nE, raw.names, raw.src);
+  net.lon = Float64Array.from(raw.nodes.lon); net.lat = Float64Array.from(raw.nodes.lat);
+  net.pop = Int32Array.from(raw.nodes.pop ?? []); net.ward = Int8Array.from(raw.nodes.ward ?? []);
   raw.edges.forEach((e, i) => {
     net.eu[i] = e[0]; net.ev[i] = e[1]; net.elen[i] = e[2]; net.elts[i] = e[3];
     net.esrc[i] = e[4]; net.ename[i] = e[5]; net.eblock[i] = e[6]; net.ecoords[i] = e[7];
   });
+  return finishNet(net);
+}
+
+function emptyNet(nN: number, nE: number, names: string[], src: string[]): Net {
+  return {
+    nNodes: nN, nEdges: nE,
+    lon: new Float64Array(nN), lat: new Float64Array(nN), pop: new Int32Array(0), ward: new Int8Array(0),
+    eu: new Int32Array(nE), ev: new Int32Array(nE), elen: new Float32Array(nE), elts: new Int8Array(nE),
+    esrc: new Int8Array(nE), ename: new Int32Array(nE), eblock: new Int32Array(nE), ecoords: new Array(nE),
+    names, src,
+    adjStart: new Int32Array(nN + 1), adjE: new Int32Array(2 * nE), adjN: new Int32Array(2 * nE),
+    totalPop: 0, grid: { x0: 0, y0: 0, cell: 0.004, nx: 0, ny: 0, cells: new Map() },
+  };
+}
+
+/** network.bin: "BSN1", u32 version, nNodes, nEdges, nPoints, metaBytes, then 4-byte-aligned typed arrays. */
+export function parseNetBin(buf: ArrayBuffer): Net {
+  const dv = new DataView(buf);
+  if (dv.getUint32(0, true) !== 0x314e5342) throw new Error("Not a BikeSim network file");
+  const nN = dv.getUint32(8, true), nE = dv.getUint32(12, true), nP = dv.getUint32(16, true), metaLen = dv.getUint32(20, true);
+  let o = 24;
+  const take = <T>(C: { new (b: ArrayBuffer, o: number, n: number): T; BYTES_PER_ELEMENT: number }, n: number): T => {
+    const a = new C(buf, o, n); o += n * C.BYTES_PER_ELEMENT; o += (4 - (o % 4)) % 4; return a;
+  };
+  const lonI = take(Int32Array, nN), latI = take(Int32Array, nN);
+  const eu = take(Int32Array, nE), ev = take(Int32Array, nE), elen = take(Float32Array, nE);
+  const ename = take(Int32Array, nE), eblock = take(Int32Array, nE);
+  const lts = take(Uint8Array, nE), src = take(Uint8Array, nE);
+  const off = take(Uint32Array, nE + 1), pts = take(Int32Array, 2 * nP);
+  const meta = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, o, metaLen))) as { names: string[]; src: string[] };
+  const net = emptyNet(nN, nE, meta.names, meta.src);
+  for (let n = 0; n < nN; n++) { net.lon[n] = lonI[n] / 1e6; net.lat[n] = latI[n] / 1e6; }
+  net.eu = eu; net.ev = ev; net.elen = elen; net.ename = ename; net.eblock = eblock;
+  net.elts = new Int8Array(lts.buffer, lts.byteOffset, nE); net.esrc = new Int8Array(src.buffer, src.byteOffset, nE);
+  for (let e = 0; e < nE; e++) {
+    const a = off[e], b = off[e + 1], c = new Array<number>(2 * (b - a));
+    let x = 0, y = 0;
+    for (let k = a, j = 0; k < b; k++, j += 2) { x += pts[2 * k]; y += pts[2 * k + 1]; c[j] = x / 1e6; c[j + 1] = y / 1e6; }
+    net.ecoords[e] = c;
+  }
+  return net;
+}
+
+function finishNet(net: Net): Net {
+  const nN = net.nNodes, nE = net.nEdges;
   // CSR adjacency (undirected; bikes may ride both ways, see About page limitations)
   const deg = new Int32Array(nN);
   for (let i = 0; i < nE; i++) { deg[net.eu[i]]++; deg[net.ev[i]]++; }

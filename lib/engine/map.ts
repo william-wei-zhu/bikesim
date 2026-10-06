@@ -1,8 +1,8 @@
 // MapLibre setup: logo-colored basemap, RideSim layers, and state -> paint updates.
 import * as maplibregl from "maplibre-gl";
-import type { Net } from "./net";
-import { streetLines, EMPTY_FC, LTS_COLOR } from "./geom";
-import { cityMaxBounds, type City } from "../cities";
+import { Protocol } from "pmtiles";
+import { EMPTY_FC, LTS_COLOR } from "./geom";
+import { cityMaxBounds, cityDataBase, type City } from "../cities";
 
 /** Opening tilt: enough for the 3D buildings to read, north up (bearing 0). */
 export const HOME_PITCH = 58;
@@ -10,9 +10,12 @@ export const cityView = (c: City) => ({ center: c.center, zoom: c.zoom, pitch: H
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 let workerSet = false;
+let pmtilesSet = false;
 
 export function createMap(container: HTMLElement, city: City, opts: { flat: boolean }) {
   if (!workerSet) { maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs"); workerSet = true; }
+  // Streets come as one PMTiles archive per city (range requests to the data bucket), not a GeoJSON of every street.
+  if (!pmtilesSet) { maplibregl.addProtocol("pmtiles", new Protocol().tile); pmtilesSet = true; }
   const map = new maplibregl.Map({
     container, style: STYLE_URL, ...cityView(city), pitch: opts.flat ? 0 : HOME_PITCH, maxPitch: 75,
     attributionControl: { compact: true }, maxBounds: cityMaxBounds(city),
@@ -121,9 +124,10 @@ class ImageryControl implements maplibregl.IControl {
 }
 
 /** Add all RideSim sources and layers. Call once after the style loads. */
-export function addLayers(map: maplibregl.Map, net: Net, city: City) {
+export function addLayers(map: maplibregl.Map, city: City) {
   const firstLabel = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
-  map.addSource("rs-streets", { type: "geojson", data: streetLines(net) });
+  map.addSource("rs-streets", { type: "vector", url: `pmtiles://${cityDataBase(city)}/streets.pmtiles`,
+    attribution: city.stress.name === "OpenStreetMap" ? "Street stress: BikeSim on OpenStreetMap" : `Street stress: ${city.stress.name}` });
   map.addSource("rs-route-fast", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-route", { type: "geojson", data: EMPTY_FC, lineMetrics: true });
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });
@@ -137,7 +141,7 @@ export function addLayers(map: maplibregl.Map, net: Net, city: City) {
 
   const ltsColor = ["match", ["get", "lts"], 1, LTS_COLOR[1], 2, LTS_COLOR[2], 3, LTS_COLOR[3], 4, LTS_COLOR[4], "#999"];
   map.addLayer({
-    id: "rs-streets", type: "line", source: "rs-streets", layout: { "line-cap": "round", "line-join": "round" },
+    id: "rs-streets", type: "line", source: "rs-streets", "source-layer": "streets", layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": ltsColor as never, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 13, 2.2, 16, 5, 18, 9] },
   }, firstLabel);
   map.addLayer({ id: "rs-break", type: "line", source: "rs-break", layout: { "line-cap": "round" },

@@ -78,7 +78,7 @@ export default function MapApp({ city }: { city: City }) {
   useEffect(() => {
     let live = true;
     const base = cityDataBase(city);
-    loadNet(base).then((n) => live && setNet(n)).catch((e) => live && setLoadError(String(e.message || e)));
+    loadNet(base, "bin").then((n) => live && setNet(n)).catch((e) => live && setLoadError(String(e.message || e)));
     loadPois(base).then((x) => live && setPois(x)).catch(() => { /* search still works through the geocoder */ });
     return () => { live = false; };
   }, [attempt, city]);
@@ -110,12 +110,13 @@ export default function MapApp({ city }: { city: City }) {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapReady || !net || layersAdded.current) return;
-    addLayers(map, net, city);
+    // Streets stream in as tiles, so they draw while the routing network is still downloading.
+    if (!map || !mapReady || layersAdded.current) return;
+    addLayers(map, city);
     layersAdded.current = true;
     applyBasemapTheme(map, dark);
     applyPaint(map, { hasRoute: false });
-  }, [mapReady, net, dark, city]);
+  }, [mapReady, dark, city]);
   useEffect(() => { if (layersAdded.current && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [dark]);
   useEffect(() => { if (layersAdded.current && mapRef.current) pauseImagery(mapRef.current, riding); }, [riding]);
 

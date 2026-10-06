@@ -17,9 +17,13 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+import shutil
+import subprocess
+
 import osmium
 
 from . import lts as L
+from .binary import write_network_bin
 from .overrides import Overrides
 
 SRC = ["osm_lts", "track_rule", "trail_rule", "official"]
@@ -33,6 +37,7 @@ class City:
     name: str
     box: tuple[float, float, float, float]  # west, south, east, north
     default_mph: int
+    arterial_mph: int | None = None
     pbf: str = ""
     overrides: list[dict] = field(default_factory=list)
 
@@ -98,7 +103,7 @@ def metres(x1, y1, x2, y2):
     return math.hypot((x2 - x1) * 111_320 * k, (y2 - y1) * 110_540)
 
 
-def build(city: City, pbf: Path, out: Path, snapshot: str = "") -> dict:
+def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: bool = False) -> dict:
     h = _Ways(city.box)
     h.apply_file(str(pbf), locations=True)
     ov = Overrides.load(city.overrides)
@@ -114,7 +119,7 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "") -> dict:
     blocks: list[list] = []
     raw_edges = []  # (u_osm, v_osm, coords, facts_lts, src, name, block)
     for w in h.ways:
-        f = L.classify(w.tags, city.default_mph)
+        f = L.classify(w.tags, city.default_mph, city.arterial_mph)
         lts, src = f.lts, SRC.index(f.rule)
         o = ov.get(w.id)
         if o is not None:
@@ -196,14 +201,18 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "") -> dict:
 
     out.mkdir(parents=True, exist_ok=True)
     dump = lambda name, obj: (out / name).write_text(json.dumps(obj, separators=(",", ":")))  # noqa: E731
-    dump("network.json", {"nodes": {"lon": lon, "lat": lat}, "edges": edges, "names": names, "src": SRC})
+    if legacy_json:
+        dump("network.json", {"nodes": {"lon": lon, "lat": lat}, "edges": edges, "names": names, "src": SRC})
+    bin_bytes = write_network_bin(out / "network.bin", lon, lat, edges, names, SRC)
+    tiles = write_street_tiles(out, edges)
     dump("blocks.json", {"cols": BLOCK_COLS, "rows": blocks})
     dump("pois.json", pois)
     total = sum(by_lts.values()) or 1
     meta = {
         "city": city.slug, "name": city.name, "built": date.today().isoformat(), "osm_snapshot": snapshot or pbf.name,
         "rules": "RideScore DC v1 LTS table on OpenStreetMap tags (bikesim_data.lts)",
-        "default_mph": city.default_mph, "nodes": len(lon), "edges": len(edges), "pois": len(pois),
+        "default_mph": city.default_mph, "arterial_mph": city.arterial_mph,
+        "network_bin_bytes": bin_bytes, "street_tiles": tiles, "nodes": len(lon), "edges": len(edges), "pois": len(pois),
         "dropped_edges": len(raw_edges) - len(edges),
         "km_by_lts": {str(k): round(v / 1000, 1) for k, v in sorted(by_lts.items())},
         "share_by_lts": {str(k): round(v / total, 3) for k, v in sorted(by_lts.items())},
@@ -212,3 +221,22 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "") -> dict:
     }
     (out / "meta.json").write_text(json.dumps(meta, indent=2))
     return meta
+
+
+def write_street_tiles(out: Path, edges: list[list]) -> str | None:
+    """streets.pmtiles (one `streets` layer, `lts` per line) for the map, so big cities don't build
+    a GeoJSON source of every street in the browser. Needs tippecanoe on PATH; skipped without it."""
+    if not shutil.which("tippecanoe"):
+        return None
+    seq = out / "streets.geojsonseq"
+    with seq.open("w") as fh:
+        for e in edges:
+            c = e[7]
+            coords = [[c[k], c[k + 1]] for k in range(0, len(c), 2)]
+            fh.write(json.dumps({"type": "Feature", "properties": {"lts": e[3]},
+                                 "geometry": {"type": "LineString", "coordinates": coords}}, separators=(",", ":")) + "\n")
+    target = out / "streets.pmtiles"
+    subprocess.run(["tippecanoe", "-q", "-f", "-o", str(target), "-l", "streets", "-Z9", "-z15",
+                    "--drop-smallest-as-needed", "--simplify-only-low-zooms", "--no-tile-stats", str(seq)], check=True)
+    seq.unlink()
+    return target.name

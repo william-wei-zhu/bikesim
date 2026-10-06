@@ -14,7 +14,7 @@ export default function Home() {
             A normal map draws a line. BikeSim shows how stressful every block of your trip will be, finds the calmer way,
             and lets you ride it first, through real street photos or a 3D model of the city.
           </p>
-          <ol className="mt-6 grid max-w-xl grid-cols-3 gap-3 text-[0.85rem]">
+          <ol className="mt-6 hidden max-w-xl grid-cols-3 gap-3 text-[0.85rem] sm:grid">
             {[["1", "Pick a trip", "Any start and end in the city"], ["2", "See the stress", "Every block, calm to hostile"], ["3", "Ride it", "Street View or 3D"]].map(([n, t, d]) => (
               <li key={n} className="rounded-card border border-line bg-surface p-3">
                 <span className="grid size-7 place-items-center rounded-full bg-primary font-mono text-[0.78rem] font-bold text-primary-ink">{n}</span>

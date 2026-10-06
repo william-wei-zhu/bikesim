@@ -37,7 +37,7 @@ export function CityPicker() {
         <Btn size="sm" onClick={locate}><LocateFixed className="size-4" aria-hidden /> Use my location</Btn>
       </div>
       {msg && <p role="status" className="mt-2 text-[0.9rem] text-ink-2">{msg}</p>}
-      <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {LIVE_CITIES.map((c, i) => <CityCard key={c.slug} c={c} featured={i === 0} />)}
       </ul>
     </section>
@@ -48,21 +48,23 @@ function CityCard({ c, featured }: { c: City; featured: boolean }) {
   const s = STATS[c.slug];
   return (
     <li className={featured ? "sm:col-span-2 sm:row-span-2" : undefined}>
-      <Link href={`/${c.slug}`} className="group flex h-full flex-col overflow-hidden rounded-card border border-line bg-paper transition-shadow hover:border-ink hover:shadow-panel focus-visible:outline-2 focus-visible:outline-accent">
-        <span className={`relative block overflow-hidden bg-surface ${featured ? "aspect-[16/10] sm:aspect-auto sm:flex-1" : "aspect-[16/10]"}`}>
-          <Image src={`/cities/${c.slug}.jpg`} alt="" fill sizes={featured ? "(min-width: 1024px) 560px, 100vw" : "(min-width: 1024px) 280px, (min-width: 640px) 50vw, 100vw"}
+      {/* Phones: a compact row (small thumbnail, name, arrow). From sm: a card with the stress map on top. */}
+      <Link href={`/${c.slug}`} className="group flex h-full items-center overflow-hidden rounded-card border border-line bg-paper transition-shadow hover:border-ink hover:shadow-panel focus-visible:outline-2 focus-visible:outline-accent sm:flex-col sm:items-stretch">
+        <span className={`relative block size-20 shrink-0 overflow-hidden bg-surface sm:size-auto ${featured ? "sm:aspect-auto sm:min-h-64 sm:flex-1" : "sm:aspect-[16/10]"}`}>
+          <Image src={`/cities/${c.slug}.jpg`} alt="" fill sizes={featured ? "(min-width: 1024px) 560px, (min-width: 640px) 100vw, 80px" : "(min-width: 1024px) 280px, (min-width: 640px) 50vw, 80px"}
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
           {featured && (
-            <span className="absolute left-3 top-3 rounded-full bg-paper/95 px-3 py-1 text-[0.76rem] font-bold shadow-panel">Official city data · crash history</span>
+            <span className="absolute left-3 top-3 hidden rounded-full bg-paper/95 px-3 py-1 text-[0.76rem] font-bold shadow-panel sm:block">Official city data · crash history</span>
           )}
         </span>
-        <span className="flex items-center gap-3 px-4 py-3">
+        <span className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3">
           <span className="min-w-0 flex-1">
-            <span className={`block font-display font-bold leading-tight ${featured ? "text-[1.4rem]" : "text-[1.1rem]"}`}>
+            <span className={`block font-display font-bold leading-tight ${featured ? "text-[1.15rem] sm:text-[1.4rem]" : "text-[1.1rem]"}`}>
               {c.name} <span className="font-mono text-[0.76rem] font-normal text-ink-2">{c.state}</span>
             </span>
             <span className="mt-0.5 block text-[0.8rem] text-ink-2">
-              {s ? `${Math.round(s.km).toLocaleString("en-US")} km of streets scored` : `Stress from ${c.stress.name}`}
+              {featured && <span className="font-semibold text-ink sm:hidden">Official city data · </span>}
+              {s ? `${Math.round(s.km).toLocaleString("en-US")} km of streets scored` : "Every street scored"}
             </span>
           </span>
           <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden />

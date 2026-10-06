@@ -25,7 +25,7 @@ export default function AboutPage() {
       <p className="mt-4 text-[1.1rem] leading-[1.7]">
         BikeSim lets you ride a city bike trip before you get on a bike. Pick a city, a start and a destination,
         see how stressful every block will be, then ride it virtually through real street photos or a 3D model of the city.
-        It started as RideSim DC, for Washington, DC, and is growing to more US cities.
+        It started as RideSim DC, for Washington, DC, and now covers 13 US cities.
       </p>
 
       <Section title="Most people never find out which streets would feel fine">
@@ -76,6 +76,8 @@ export default function AboutPage() {
         <p className="text-[0.9rem] text-ink-2">
           A buffer beside a painted lane earns one level back up to 35 mph. Where OpenStreetMap has no speed limit, BikeSim uses the
           city&apos;s legal default (20 mph on Seattle, Portland, Minneapolis and Denver side streets, 25 mph in most others, 30 in Chicago).
+          In Chicago, Boston and Philadelphia the official stress maps take priority wherever they cover a street (Cook County&apos;s LTS 2023,
+          Boston&apos;s BLTS 2024 and DVRPC&apos;s LTS network); BikeSim&apos;s model fills the gaps.
           On DC&apos;s own streets this model agrees with RideScore DC within one level on 85% of the length; it rates quiet 20 mph side
           streets one level calmer than RideScore does.
         </p>

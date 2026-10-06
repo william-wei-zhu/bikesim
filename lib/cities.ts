@@ -51,7 +51,7 @@ const p = (label: string, y: number, x: number): CityPlace => ({ label, x, y });
 const trip = (from: CityPlace, to: CityPlace) => ({ label: `${from.label} to ${to.label}`, from, to });
 
 /** Cities with OSM-based stress share these values. */
-function osmCity(c: Omit<City, "stress" | "records" | "crashes" | "live" | "zoom" | "aerial"> & Partial<Pick<City, "stress" | "zoom">>): City {
+function osmCity(c: Omit<City, "stress" | "records" | "crashes" | "live" | "zoom" | "aerial"> & Partial<Pick<City, "stress" | "records" | "zoom">>): City {
   return { stress: OSM_LTS, records: OSM_RECORDS, crashes: false, live: true, zoom: 13.4, aerial: usgs(c.box), ...c };
 }
 
@@ -124,6 +124,7 @@ export const CITIES: City[] = [
   osmCity({
     slug: "chicago", name: "Chicago", short: "Chicago", state: "IL", center: [-87.6298, 41.8818],
     box: [-87.94, 41.64, -87.52, 42.03], searchHint: ", Chicago, IL", searchWords: ["chicago"], transit: "L", data: "2026-10-05",
+    stress: { name: "Cook County LTS 2023", url: "https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/14", by: "Cook County DOTH" }, records: "Cook County's stress map",
     examples: [
       trip(p("Wicker Park", 41.9088, -87.6796), p("The Loop", 41.8827, -87.6278)),
       trip(p("Logan Square", 41.9231, -87.7093), p("Lincoln Park Zoo", 41.9211, -87.6340)),
@@ -133,6 +134,7 @@ export const CITIES: City[] = [
   osmCity({
     slug: "boston", name: "Boston", short: "Boston", state: "MA", center: [-71.0589, 42.3601],
     box: [-71.19, 42.23, -70.99, 42.40], searchHint: ", Boston, MA", searchWords: ["boston"], transit: "T", data: "2026-10-05",
+    stress: { name: "Boston BLTS 2024", url: "https://www.boston.gov/departments/transportation", by: "City of Boston" }, records: "Boston's stress map",
     examples: [
       trip(p("Jamaica Plain", 42.3097, -71.1151), p("Back Bay", 42.3503, -71.0810)),
       trip(p("South End", 42.3388, -71.0765), p("North End", 42.3647, -71.0542)),
@@ -142,6 +144,7 @@ export const CITIES: City[] = [
   osmCity({
     slug: "philadelphia", name: "Philadelphia", short: "Philly", state: "PA", center: [-75.1652, 39.9526],
     box: [-75.28, 39.87, -74.96, 40.14], searchHint: ", Philadelphia, PA", searchWords: ["philadelphia", "philly"], transit: "SEPTA", data: "2026-10-05",
+    stress: { name: "DVRPC LTS network", url: "https://catalog.dvrpc.org/dataset/dvrpc-level-of-traffic-stress-lts-network", by: "DVRPC" }, records: "DVRPC's stress map",
     examples: [
       trip(p("Fishtown", 39.9721, -75.1340), p("City Hall", 39.9524, -75.1636)),
       trip(p("University City", 39.9522, -75.1932), p("Rittenhouse Square", 39.9496, -75.1718)),

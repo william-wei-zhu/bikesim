@@ -1,0 +1,32 @@
+{
+ "chicago": {
+  "km": 20585,
+  "calm": 0.858,
+  "hostile": 0.095
+ },
+ "dc": {
+  "km": 2067,
+  "calm": 0.588,
+  "hostile": 0.316
+ },
+ "los-angeles": {
+  "km": 23338,
+  "calm": 0.733,
+  "hostile": 0.159
+ },
+ "portland": {
+  "km": 5831,
+  "calm": 0.825,
+  "hostile": 0.075
+ },
+ "san-francisco": {
+  "km": 2024,
+  "calm": 0.743,
+  "hostile": 0.123
+ },
+ "seattle": {
+  "km": 4222,
+  "calm": 0.796,
+  "hostile": 0.049
+ }
+}

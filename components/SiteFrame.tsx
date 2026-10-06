@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Header } from "@/components/app/Header";
 
 /** Layout for content pages (Home, About, Privacy, Settings): header, readable column, footer. */
-export function SiteFrame({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+export function SiteFrame({ children, wide }: { children: React.ReactNode; wide?: boolean | "xl" }) {
   return (
     <div className="min-h-screen bg-paper">
       <Header />
-      <main className={`mx-auto px-5 pb-16 pt-10 md:pt-14 ${wide ? "max-w-5xl" : "max-w-2xl"}`}>
+      <main className={`mx-auto px-5 pb-16 pt-10 md:pt-14 ${wide === "xl" ? "max-w-6xl" : wide ? "max-w-5xl" : "max-w-2xl"}`}>
         {children}
       </main>
       <footer className="border-t border-line">

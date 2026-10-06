@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
       // page keeps its path. /data stays put so RideScore DC's "Ride it" page keeps loading DC's network.
       { source: "/", has: OLD_HOST, destination: "https://bikesim.org/dc", permanent: true },
       { source: "/:path((?!data/|__/).*)", has: OLD_HOST, destination: "https://bikesim.org/:path", permanent: true },
+      { source: "/:path*", has: [{ type: "host", value: "www\\.bikesim\\.org" }], destination: "https://bikesim.org/:path*", permanent: true },
       // Trip links from before cities (/?from=...&to=...) were all DC; the query string carries over.
       { source: "/", has: [{ type: "query", key: "from" }], destination: "/dc", permanent: true },
       { source: "/", has: [{ type: "query", key: "to" }], destination: "/dc", permanent: true },

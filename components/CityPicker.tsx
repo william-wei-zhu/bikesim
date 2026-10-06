@@ -1,12 +1,17 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, LocateFixed } from "lucide-react";
-import { CITIES, LIVE_CITIES } from "@/lib/cities";
+import { LIVE_CITIES, type City } from "@/lib/cities";
 import { Btn } from "@/components/ui";
+import stats from "@/lib/city-stats.json";
 
-/** Live cities link to their map; the rest show as coming soon. "Use my location" opens the nearest live city. */
+type Stat = { km: number; calm: number; hostile: number };
+const STATS = stats as Record<string, Stat>;
+
+/** Every live city as a card with its stress map; DC (official city data) is featured. "Use my location" opens the nearest. */
 export function CityPicker() {
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
@@ -23,34 +28,46 @@ export function CityPicker() {
   };
 
   return (
-    <section className="mt-8" aria-labelledby="cities">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="cities" className="text-[1.35rem] font-bold">Choose a city</h2>
+    <section className="mt-14" aria-labelledby="cities">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="cities" className="text-[1.6rem] font-bold">Choose a city</h2>
+          <p className="mt-1 text-[0.95rem] text-ink-2">Every street colored by how stressful it is to ride.</p>
+        </div>
         <Btn size="sm" onClick={locate}><LocateFixed className="size-4" aria-hidden /> Use my location</Btn>
       </div>
-      {msg && <p role="status" className="mt-2 text-[0.85rem] text-ink-2">{msg}</p>}
-      <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {CITIES.map((c) => (
-          <li key={c.slug}>
-            {c.live ? (
-              <Link href={`/${c.slug}`} className="group flex min-h-20 items-center gap-3 rounded-card border-2 border-ink bg-paper px-5 py-4 hover:bg-surface">
-                <span className="min-w-0 flex-1">
-                  <span className="block font-display text-[1.15rem] font-bold">{c.name}</span>
-                  <span className="block text-[0.8rem] text-accent-ink font-semibold">Ride now · stress from {c.stress.name}</span>
-                </span>
-                <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden />
-              </Link>
-            ) : (
-              <div className="flex min-h-20 items-center gap-3 rounded-card border border-line bg-surface px-5 py-4" aria-disabled="true">
-                <span className="min-w-0 flex-1">
-                  <span className="block font-display text-[1.15rem] font-bold text-ink-2">{c.name}</span>
-                  <span className="block text-[0.8rem] text-ink-2">Coming soon</span>
-                </span>
-              </div>
-            )}
-          </li>
-        ))}
+      {msg && <p role="status" className="mt-2 text-[0.9rem] text-ink-2">{msg}</p>}
+      <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {LIVE_CITIES.map((c, i) => <CityCard key={c.slug} c={c} featured={i === 0} />)}
       </ul>
     </section>
+  );
+}
+
+function CityCard({ c, featured }: { c: City; featured: boolean }) {
+  const s = STATS[c.slug];
+  return (
+    <li className={featured ? "sm:col-span-2 sm:row-span-2" : undefined}>
+      <Link href={`/${c.slug}`} className="group flex h-full flex-col overflow-hidden rounded-card border border-line bg-paper transition-shadow hover:border-ink hover:shadow-panel focus-visible:outline-2 focus-visible:outline-accent">
+        <span className={`relative block overflow-hidden bg-surface ${featured ? "aspect-[16/10] sm:aspect-auto sm:flex-1" : "aspect-[16/10]"}`}>
+          <Image src={`/cities/${c.slug}.jpg`} alt="" fill sizes={featured ? "(min-width: 1024px) 560px, 100vw" : "(min-width: 1024px) 280px, (min-width: 640px) 50vw, 100vw"}
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+          {featured && (
+            <span className="absolute left-3 top-3 rounded-full bg-paper/95 px-3 py-1 text-[0.76rem] font-bold shadow-panel">Official city data · crash history</span>
+          )}
+        </span>
+        <span className="flex items-center gap-3 px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className={`block font-display font-bold leading-tight ${featured ? "text-[1.4rem]" : "text-[1.1rem]"}`}>
+              {c.name} <span className="font-mono text-[0.76rem] font-normal text-ink-2">{c.state}</span>
+            </span>
+            <span className="mt-0.5 block text-[0.8rem] text-ink-2">
+              {s ? `${Math.round(s.km).toLocaleString("en-US")} km of streets scored` : `Stress from ${c.stress.name}`}
+            </span>
+          </span>
+          <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden />
+        </span>
+      </Link>
+    </li>
   );
 }

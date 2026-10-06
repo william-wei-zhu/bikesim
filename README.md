@@ -11,7 +11,7 @@ npm run dev
 
 - Cities are listed in `lib/cities.ts`. Each city's street data (`network.bin`, `streets.pmtiles`, `blocks.json`, `pois.json`, `meta.json`) is served from the public bucket `gs://bikesim-data/<city>/<build date>/`.
 - `pipeline/` builds that data from OpenStreetMap and scores every block with Level of Traffic Stress (Furth 2017 criteria; DC uses RideScore DC's scores). See `pipeline/README.md`.
-- Accounts (only needed for Street View after the first ride, and for saved trips) use Firebase on the GCP project `ridesimdc`. Copy the `NEXT_PUBLIC_*` variables into `.env.local` to run them locally.
+- Accounts (needed for Street View after two rides per device, and for saved trips; sign-in emails go through Resend SMTP) use Firebase on the GCP project `ridesimdc`. Copy the `NEXT_PUBLIC_*` variables into `.env.local` to run them locally.
 
 See `CLAUDE.md` for architecture and decisions.
 

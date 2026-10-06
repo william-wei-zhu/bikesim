@@ -19,9 +19,9 @@ def test_build_writes_the_app_schema(tmp_path):
         assert blocks["rows"][block][1] == names[name]
         by_name.setdefault(names[name], set()).add(lts)
     assert by_name["Big Avenue"] == {4}
-    assert by_name["West Street"] == {2}       # posted 20 mph
-    assert by_name["Quiet Street"] == {3}      # unsigned: city default 25 mph
-    assert by_name["Middle Road"] == {2}       # painted lane, 25 mph, 2 lanes
+    assert by_name["West Street"] == {1}       # residential, posted 20 mph
+    assert by_name["Quiet Street"] == {1}      # residential, unsigned: city default 25 mph
+    assert by_name["Middle Road"] == {1}       # painted lane, 25 mph, one lane each way
     assert by_name["Tiny Trail"] == {1}
     # Dropped: the sidewalk and motorway (unusable) and the island loop (not connected).
     assert not {"Freeway", "Island Loop"} & set(by_name)

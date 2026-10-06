@@ -61,8 +61,13 @@ function namesCity(q: string, words: string[]) {
   return words.some((w) => t.includes(` ${w} `));
 }
 
-/** Drop the city, county, state and country tail Nominatim adds: "1600 Pennsylvania Ave NW, Washington, ..." */
+const STATES = new Set(["District of Columbia", "Washington", "Oregon", "California", "Illinois", "Massachusetts", "New York",
+  "Pennsylvania", "Minnesota", "Colorado", "Texas", "United States"]);
+
+/** Keep the useful head of Nominatim's name: drop the city, counties, state, ZIP code and country; at most three parts.
+ *  "Prospect Park, Brooklyn, Kings County, New York, 11225, United States" -> "Prospect Park, Brooklyn". */
 function shortLabel(name: string, cityName: string) {
-  const i = name.indexOf(`, ${cityName}`);
-  return (i > 0 ? name.slice(0, i) : name).replace(/, (District of Columbia|United States).*$/, "");
+  const [head, ...rest] = name.split(", ");
+  const keep = rest.filter((x) => x !== cityName && !STATES.has(x) && !/ County$/.test(x) && !/^\d{5}(-\d{4})?$/.test(x));
+  return [head, ...keep].slice(0, 3).join(", ");
 }

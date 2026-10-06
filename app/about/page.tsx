@@ -126,7 +126,7 @@ export default function AboutPage() {
       <Section title="Made in DC, now national, in the open">
         <p>
           BikeSim began as RideSim DC, built for the Civic Tech DC hackathon (October 3, 2026) on top of RideScore DC.
-          The code is open on <a className={ext} href="https://github.com/william-wei-zhu/ridesimdc" target="_blank" rel="noreferrer">GitHub</a>.
+          The code is open on <a className={ext} href="https://github.com/william-wei-zhu/bikesim" target="_blank" rel="noreferrer">GitHub</a>.
         </p>
         <p>
           <Link href="/" className="inline-flex min-h-11 items-center rounded-full bg-primary px-6 font-semibold text-primary-ink hover:opacity-90">

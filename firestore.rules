@@ -1,0 +1,20 @@
+rules_version = '2';
+// BikeSim: each signed-in rider can read and write only their own profile and saved trips.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['created', 'lastSeen', 'svDay', 'svCount', 'email'])
+        && (!('svCount' in request.resource.data) || request.resource.data.svCount is int);
+      match /trips/{trip} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['city', 'from', 'to', 'label', 'created'])
+          && request.resource.data.city is string && request.resource.data.label is string
+          && request.resource.data.label.size() <= 200;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

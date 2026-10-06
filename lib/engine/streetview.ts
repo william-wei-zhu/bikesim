@@ -44,7 +44,11 @@ export async function createStreetView(
   host: HTMLElement, apiKey: string, pointAt: (d: number) => [number, number], startDist: number, heading: number,
   onCoverage: (hasPhotos: boolean) => void, onLook: (look: Look) => void, zoom = streetViewZoom(false),
 ): Promise<StreetViewHandle> {
-  if (!optionsSet) { setOptions({ key: apiKey, v: "weekly" }); optionsSet = true; }
+  if (!optionsSet) {
+    setOptions({ key: apiKey, v: "weekly" }); optionsSet = true;
+    // Google calls this when the key is refused (wrong site, or the day's quota is used up): fall back to 3D.
+    (window as unknown as { gm_authFailure: () => void }).gm_authFailure = () => window.dispatchEvent(new Event("bs-streetview-failed"));
+  }
   const { StreetViewPanorama, StreetViewService, StreetViewSource, StreetViewPreference } = await importLibrary("streetView");
   const service = new StreetViewService();
 

@@ -19,6 +19,8 @@ import { RideHud } from "./RideHud";
 import { Loading } from "./Loading";
 import { FinishCard } from "./FinishCard";
 import { readDefaultView, readRider } from "@/lib/prefs";
+import { authConfigured, getAccount, claimStreetViewRide, freeStreetViewUsed, markFreeStreetViewUsed, completeEmailLink, isEmailLinkReturn, DAILY_STREETVIEW_RIDES } from "@/lib/auth";
+import { AuthSheet } from "@/components/AuthSheet";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
@@ -71,6 +73,10 @@ export default function MapApp({ city }: { city: City }) {
   const bikeRef = useRef<BikeLayer | null>(null);
   const overlayRef = useRef<BikeOverlay | null>(null);
   const layersAdded = useRef(false);
+  // Street View costs real money: one free ride per device, then sign in (see lib/auth.ts).
+  const [gate, setGate] = useState<((v: View | null) => void) | null>(null);
+  const [confirmLink, setConfirmLink] = useState(false);
+  const svGranted = useRef(false);
 
   const toast = useCallback((m: string) => { setToastMsg(m); window.setTimeout(() => setToastMsg((c) => (c === m ? null : c)), 3500); }, []);
 
@@ -215,14 +221,12 @@ export default function MapApp({ city }: { city: City }) {
   }; });
 
   // ln: ride a specific route line (the finish card switches routes and starts at once).
-  const startRide = useCallback((ln?: typeof line) => {
+  const startRide = useCallback((ln?: typeof line, startView: View = "model") => {
     setFinished(null);
     const map = mapRef.current;
     const line_ = ln ?? line;
     if (!map || !line_) return;
     rideRef.current?.stop();
-    // Each ride starts in the view chosen in Settings (switchable during the ride).
-    const startView: View = GOOGLE_KEY ? readDefaultView() : "model";
     setView(startView);
     const r = new Ride(map, line_.coords, line_.segEdge, (f) => {
       setRideFrame(f);
@@ -250,6 +254,57 @@ export default function MapApp({ city }: { city: City }) {
     map.flyTo({ center: line_.coords[0], zoom: 17.8, pitch: 74, duration: 1500 });
     window.setTimeout(() => { if (rideRef.current === r) r.play(); }, 1550);
   }, [line, net]);
+
+  /** May this ride use Street View? Resolves to the view to ride in, or null if the rider closed the sign-in sheet. */
+  const askStreetView = useCallback(async (): Promise<View | null> => {
+    if (!authConfigured || svGranted.current) return "street";
+    const claim = async (): Promise<View> => {
+      try {
+        if (!(await claimStreetViewRide())) {
+          toast(`That's today's ${DAILY_STREETVIEW_RIDES} Street View rides. Riding in 3D; Street View is back tomorrow.`);
+          return "model";
+        }
+      } catch { /* allowance check failed (offline): don't punish the rider */ }
+      svGranted.current = true;
+      return "street";
+    };
+    if (getAccount()) return claim();
+    if (!freeStreetViewUsed()) { markFreeStreetViewUsed(); svGranted.current = true; return "street"; }
+    const v = await new Promise<View | null>((resolve) => setGate(() => resolve));
+    setGate(null);
+    return v === "street" ? claim() : v;
+  }, [toast]);
+
+  // Each ride starts in the view chosen in Settings (switchable during the ride).
+  const beginRide = useCallback(async (ln?: typeof line) => {
+    svGranted.current = false;
+    let v: View | null = GOOGLE_KEY ? readDefaultView() : "model";
+    if (v === "street") v = await askStreetView();
+    if (v) startRide(ln, v);
+  }, [askStreetView, startRide]);
+
+  const switchView = useCallback(async (v: View) => {
+    if (v === "street") {
+      rideRef.current?.pause(); setRidePlaying(false);
+      const ok = (await askStreetView()) === "street";
+      rideRef.current?.play(); setRidePlaying(true);
+      if (!ok) return;
+    }
+    setView(v);
+  }, [askStreetView]);
+
+  // Google refused the key (quota used up, or a site that isn't allowed): finish the ride in 3D.
+  useEffect(() => {
+    const fail = () => { toast("Street View is unavailable right now. Riding in 3D."); setView("model"); };
+    window.addEventListener("bs-streetview-failed", fail);
+    return () => window.removeEventListener("bs-streetview-failed", fail);
+  }, [toast]);
+
+  // Opened from an emailed sign-in link on a device that didn't ask for it: ask which email it was.
+  useEffect(() => {
+    if (!authConfigured || !isEmailLinkReturn()) return;
+    completeEmailLink().then((done) => { if (!done) setConfirmLink(true); }).catch(() => setConfirmLink(true));
+  }, []);
 
   const shareRide = useCallback(async () => {
     const url = window.location.href;
@@ -340,10 +395,10 @@ export default function MapApp({ city }: { city: City }) {
         {!net && <Loading city={city} error={loadError} onRetry={() => { setLoadError(null); setAttempt((a) => a + 1); }} />}
         {net && !riding && !finished && (
           <TripPanel city={city} pois={pois} routes={routes} kind={kind} setKind={setKind} stretches={stretches} from={from} to={to} setFrom={setFrom} setTo={setTo}
-            setPick={setPick} awaiting={awaiting} onRide={() => startRide()} onFlyTo={flyToStretch} onShare={shareRide} explain={explain} />
+            setPick={setPick} awaiting={awaiting} onRide={() => beginRide()} onFlyTo={flyToStretch} onShare={shareRide} explain={explain} />
         )}
         {net && riding && rideFrame && (
-          <RideHud net={net} frame={rideFrame} playing={ridePlaying} view={view} views={VIEWS} onView={setView} noPhotos={noPhotos}
+          <RideHud net={net} frame={rideFrame} playing={ridePlaying} view={view} views={VIEWS} onView={switchView} noPhotos={noPhotos}
             onPlayPause={() => { const r = rideRef.current; if (!r) return; if (r.playing) { r.pause(); setRidePlaying(false); } else { r.play(); setRidePlaying(true); } }}
             onSeek={(f) => rideRef.current?.seek(f)}
             onSpeed={(s) => { if (rideRef.current) rideRef.current.speed = s; }}
@@ -351,8 +406,8 @@ export default function MapApp({ city }: { city: City }) {
         )}
         {net && !riding && finished && ok && (
           <FinishCard kind={finished} ridden={finished === "short" ? ok.fastest : ok.calm} other={finished === "short" ? ok.calm : ok.fastest}
-            onRideOther={() => { const k: RouteKind = finished === "short" ? "calm" : "short"; setKind(k); startRide(routeLine(net, k === "short" ? ok.fastest : ok.calm)); }}
-            onRideAgain={() => startRide()} onShare={shareRide} onClose={() => setFinished(null)} />
+            onRideOther={() => { const k: RouteKind = finished === "short" ? "calm" : "short"; setKind(k); beginRide(routeLine(net, k === "short" ? ok.fastest : ok.calm)); }}
+            onRideAgain={() => beginRide()} onShare={shareRide} onClose={() => setFinished(null)} />
         )}
         {net && !awaiting && ok && !riding && !finished && (
           // Step 3: the route is ready; point at the Start the ride button. Tapping it reopens the trip panel
@@ -386,6 +441,10 @@ export default function MapApp({ city }: { city: City }) {
             </div>
           </div>
         )}
+        {gate && (
+          <AuthSheet reason="streetview" onDone={() => gate("street")} onRide3D={() => gate("model")} onClose={() => gate(null)} />
+        )}
+        {confirmLink && <AuthSheet reason="confirm" onDone={() => setConfirmLink(false)} onClose={() => setConfirmLink(false)} />}
         {toastMsg && (
           <div role="status" className="absolute bottom-6 left-1/2 z-30 max-w-[90%] -translate-x-1/2 rounded-full bg-primary px-5 py-2.5 text-[0.85rem] font-semibold text-primary-ink shadow-panel md:bottom-8">
             {toastMsg}

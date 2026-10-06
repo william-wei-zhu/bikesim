@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "outline" | "quiet"; size?: "md" | "sm" };
+type BtnProps = React.ComponentProps<"button"> & { variant?: "primary" | "outline" | "quiet"; size?: "md" | "sm" };
 
 export function Btn({ variant = "outline", size = "md", className, ...p }: BtnProps) {
   return (

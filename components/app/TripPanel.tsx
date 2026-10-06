@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, ArrowUpDown, Bike, ChevronDown, ChevronRight, ChevronUp, MapPin, Share2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpDown, Bike, Bookmark, BookmarkCheck, ChevronDown, ChevronRight, ChevronUp, MapPin, Share2 } from "lucide-react";
+import { authConfigured, getAccount, saveTrip } from "@/lib/auth";
+import { AuthSheet } from "@/components/AuthSheet";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch, StretchWhy } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
@@ -83,6 +85,7 @@ export function TripPanel(p: {
                   <Share2 className="size-3.5" /> Share
                 </Btn>
               )}
+              {ok && authConfigured && <SaveTrip city={p.city.slug} from={p.from} to={p.to} />}
             </div>
           )}
         </div>
@@ -208,5 +211,28 @@ function PickBtn({ on }: { on: () => void }) {
     <button onClick={on} aria-label="Pick on map" title="Pick on map" className="grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink hover:bg-surface cursor-pointer">
       <MapPin className="size-4" />
     </button>
+  );
+}
+
+/** Keep this trip in the rider's account (asks to sign in first). */
+function SaveTrip({ city, from, to }: { city: string; from: Place; to: Place }) {
+  const [state, setState] = useState<"idle" | "saved" | "error" | "auth">("idle");
+  const key = `${from.x},${from.y},${to.x},${to.y}`;
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const saved = state === "saved" && savedKey === key;
+  const save = async () => {
+    try {
+      await saveTrip({ city, label: `${from.label} to ${to.label}`, from, to });
+      setSavedKey(key); setState("saved");
+    } catch { setState("error"); }
+  };
+  return (
+    <>
+      <Btn size="sm" variant="quiet" disabled={saved} onClick={() => (getAccount() ? save() : setState("auth"))}
+        title={state === "error" ? "Couldn't save. Try again." : undefined}>
+        {saved ? <BookmarkCheck className="size-3.5 text-accent" /> : <Bookmark className="size-3.5" />} {saved ? "Saved" : state === "error" ? "Retry save" : "Save"}
+      </Btn>
+      {state === "auth" && <AuthSheet reason="save" onDone={() => { setState("idle"); save(); }} onClose={() => setState("idle")} />}
+    </>
   );
 }

@@ -85,6 +85,7 @@
 - 2026-10-05 (William): Each city has its own color and landmark icon (`City.color`, `public/cities/icons/<slug>.png`, GPT Image 2.5 set, originals in `../brand/city-icons/`; `cityInk()` picks navy or white text). The header city switcher is a solid pill in the city's color with its icon; the dropdown lists every city with its icon.
 - 2026-10-05: Switching cities starts fresh: `MapApp` is keyed by city slug (new map, no old pins), the URL trip is written only on the city's own path, and `readUrl` ignores points outside the city box.
 - 2026-10-05 (William): "Start from my current location" button under the start field (browser geolocation, high accuracy; only inside the city box, otherwise a message).
+- 2026-10-05 (William, reverses 2026-10-02): Lowest stress is now the default route and the first option ("Lowest stress | Shortest"); `route=short` in the URL picks Shortest (links without `route` now mean lowest stress). Reason: as a product, people come for the calm way; the finish card still shows what the shortest route would have cost ("...more hostile riding. You avoided it.").
 - Standard deviations: full-screen map, so the header is part of a fixed layout (no page scroll); street data is static files in GCS (Firestore holds only accounts and saved trips); Settings has theme, default ride view, rider and Account (no notification rows: we send no email besides sign-in links).
 
 ## Scaling

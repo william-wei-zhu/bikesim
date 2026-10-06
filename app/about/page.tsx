@@ -83,11 +83,11 @@ export default function AboutPage() {
         </p>
       </Section>
 
-      <Section title="Pick the shortest route, or the one that avoids hostile streets">
+      <Section title="The calm way first, the shortest way one tap away">
         <p>
-          By default BikeSim shows the shortest route, so you can see exactly how stressful the direct ride would be.
-          Switch to <span className="font-semibold">Lowest stress</span> and it finds the route that keeps you off hostile LTS 4 streets,
-          even if that means riding farther. The other route stays on the map as a dotted line for comparison. Hostile stretches on your route are listed by name and length.
+          By default BikeSim shows the <span className="font-semibold">lowest-stress</span> route: it keeps you off hostile LTS 4 streets,
+          even if that means riding a little farther. Switch to <span className="font-semibold">Shortest</span> to see how stressful the direct ride would be.
+          The other route stays on the map as a dotted line for comparison. Hostile stretches on your route are listed by name and length.
         </p>
       </Section>
 

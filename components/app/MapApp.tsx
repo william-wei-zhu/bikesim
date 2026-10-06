@@ -41,7 +41,7 @@ function readUrl(city: City) {
     if (!(X >= w - 0.1 && X <= e + 0.1 && Y >= s - 0.1 && Y <= n + 0.1)) return null;
     return { x: X, y: Y, label: rest.join(",") || "Dropped pin" };
   };
-  return { from: place("from"), to: place("to"), kind: (p.get("route") === "calm" ? "calm" : "short") as RouteKind };
+  return { from: place("from"), to: place("to"), kind: (p.get("route") === "short" ? "short" : "calm") as RouteKind };
 }
 
 export default function MapApp({ city }: { city: City }) {
@@ -61,7 +61,7 @@ export default function MapApp({ city }: { city: City }) {
   const [from, setFrom] = useState<Place | null>(init?.from ?? null);
   const [to, setTo] = useState<Place | null>(init?.to ?? null);
   const [pick, setPick] = useState<"from" | "to" | null>(null);
-  const [kind, setKind] = useState<RouteKind>(init?.kind ?? "short");
+  const [kind, setKind] = useState<RouteKind>(init?.kind ?? "calm");
   const [view, setView] = useState<View>(() => (GOOGLE_KEY && typeof window !== "undefined" ? readDefaultView() : "model"));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [rideFrame, setRideFrame] = useState<RideFrame | null>(null);
@@ -167,7 +167,7 @@ export default function MapApp({ city }: { city: City }) {
     const enc = (pl: Place) => `${pl.x.toFixed(5)},${pl.y.toFixed(5)},${pl.label}`;
     if (from) p.set("from", enc(from));
     if (to) p.set("to", enc(to));
-    if (kind === "calm") p.set("route", "calm");
+    if (kind === "short") p.set("route", "short");
     const q = p.toString();
     // Only this city's own page carries its trip (a city switch must not drag the old trip along).
     const path = `/${city.slug}`;
@@ -355,7 +355,7 @@ export default function MapApp({ city }: { city: City }) {
   // Logo click: back to the start screen (no trip, north-up city view), even when already on this city's page.
   const goHome = useCallback(() => {
     stopRide(); setFinished(null);
-    setFrom(null); setTo(null); setPick(null); setKind("short");
+    setFrom(null); setTo(null); setPick(null); setKind("calm");
     const map = mapRef.current;
     if (map) {
       setGhostPin(map, null);

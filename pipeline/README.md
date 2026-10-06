@@ -46,7 +46,7 @@ are in `cities.toml`.
 
 | City | Official layer | Join |
 |---|---|---|
-| Chicago | Cook County LTS 2022 (`gis.cookcountyil.gov` DOTH_expanded/MapServer/13; `way_id`, `ltsrank`) | OSM way id, then spatial for ways redrawn since 2022 |
+| Chicago | Cook County LTS 2023 (`gis.cookcountyil.gov` DOTH_expanded/MapServer/14; `way_id`, `lts`; 2022 edition is layer 13) | OSM way id, then spatial for ways redrawn since |
 | Boston | Boston BLTS 2024 (boston.gov/blts; ArcGIS `BLTS_2024` FeatureServer; `lts`, 0 = no bike access) | spatial |
 | Philadelphia | DVRPC LTS Network (catalog.dvrpc.org, `dvrpc/gis-lts-calc`; `lts`) | spatial |
 | Seattle | SDOT Bicycle LTS | percentile-based, not 1-4 Furth; use as a cross-check only |

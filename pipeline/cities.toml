@@ -41,12 +41,13 @@ name = "Chicago"
 box = [-87.94, 41.64, -87.52, 42.03]
 default_mph = 30   # Chicago municipal code citywide default unless posted
 pbf = "https://download.geofabrik.de/north-america/us/illinois-latest.osm.pbf"
-# Cook County LTS 2022 (OSM 2022-based, carries way_id; fields name, ltsrank "1".."4", way_id). Fetch with
-# uv run python scripts/fetch_arcgis.py https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/13 sources/chicago/cook_lts_2022.geojson --box -87.94 41.64 -87.52 42.03 --fields name,ltsrank,way_id
-# The second entry matches the same layer by geometry for OSM ways split or redrawn since 2022.
+# Cook County LTS 2023 (UMN Accessibility Observatory method on OSM; fields way_id, lts "1".."4", name).
+# Layer 13 is the 2022 edition (fields way_id, ltsrank). Fetch with
+# uv run python scripts/fetch_arcgis.py https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/14 sources/chicago/cook_lts_2023.geojson --box -87.94 41.64 -87.52 42.03 --fields name,lts,way_id
+# The second entry matches the same layer by geometry for OSM ways split or redrawn since 2023.
 overrides = [
-  { name = "Cook County LTS 2022", path = "sources/chicago/cook_lts_2022.geojson", way_id = "way_id", lts = "ltsrank" },
-  { name = "Cook County LTS 2022 (spatial)", path = "sources/chicago/cook_lts_2022.geojson", lts = "ltsrank", join = "spatial" },
+  { name = "Cook County LTS 2023", path = "sources/chicago/cook_lts_2023.geojson", way_id = "way_id", lts = "lts" },
+  { name = "Cook County LTS 2023 (spatial)", path = "sources/chicago/cook_lts_2023.geojson", lts = "lts", join = "spatial" },
 ]
 
 [city.austin]

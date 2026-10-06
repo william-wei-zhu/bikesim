@@ -23,6 +23,8 @@ const config = {
 };
 
 export const authConfigured = Boolean(config.apiKey && config.appId);
+/** Google sign-in shows once the Google provider is enabled in the Firebase console (it needs an OAuth client). */
+export const googleSignIn = process.env.NEXT_PUBLIC_GOOGLE_SIGNIN === "1";
 
 let ready: Promise<{ auth: Auth; db: Firestore }> | null = null;
 function fb() {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Box, Mail, X } from "lucide-react";
 import { Btn } from "@/components/ui";
-import { sendEmailLink, signInWithGoogle, completeEmailLink } from "@/lib/auth";
+import { sendEmailLink, signInWithGoogle, completeEmailLink, googleSignIn } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 
 export type AuthReason = "streetview" | "save" | "account" | "confirm";
@@ -84,22 +84,22 @@ export function AuthSheet({ reason, onDone, onClose, onRide3D }: {
           </div>
         ) : (
           <>
-            {reason !== "confirm" && (
+            {reason !== "confirm" && googleSignIn && (
               <Btn ref={first} variant="primary" className="mt-5 w-full" onClick={google} disabled={state === "busy"}>
                 <GoogleMark /> Continue with Google
               </Btn>
             )}
-            {reason !== "confirm" && (
+            {reason !== "confirm" && googleSignIn && (
               <div className="my-4 flex items-center gap-3 text-[0.8rem] text-ink-2">
                 <span className="h-px flex-1 bg-line" /> or get a sign-in link by email <span className="h-px flex-1 bg-line" />
               </div>
             )}
-            <form onSubmit={submitEmail} className={reason === "confirm" ? "mt-5 space-y-3" : "space-y-3"}>
+            <form onSubmit={submitEmail} className={reason === "confirm" || !googleSignIn ? "mt-5 space-y-3" : "space-y-3"}>
               <label htmlFor="auth-email" className="sr-only">Email address</label>
               <input id="auth-email" type="email" inputMode="email" autoComplete="email" required value={email}
                 onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
                 className="min-h-11 w-full rounded-full border-2 border-line bg-paper px-5 text-[0.95rem] outline-none focus:border-accent" />
-              <Btn type="submit" className="w-full" disabled={state === "busy"}>
+              <Btn type="submit" variant={googleSignIn ? "outline" : "primary"} className="w-full" disabled={state === "busy"}>
                 <Mail className="size-4" aria-hidden /> {reason === "confirm" ? "Sign in" : "Email me a link"}
               </Btn>
             </form>

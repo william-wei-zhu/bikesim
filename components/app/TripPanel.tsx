@@ -165,7 +165,7 @@ export function TripPanel(p: {
                         </button>
                         {isOpen && (
                           <div className="px-3.5 pb-3 animate-in fade-in duration-200">
-                            {!w && <p className="text-[0.82rem] text-ink-2">Loading {p.city.stress.name} street data…</p>}
+                            {!w && <p className="text-[0.82rem] text-ink-2">Loading street details…</p>}
                             {w === "error" && <p className="text-[0.82rem] text-ink-2">Could not load the street details. Try again.</p>}
                             {w && w !== "error" && (
                               <>
@@ -198,7 +198,7 @@ export function TripPanel(p: {
 
         <footer className="mt-6 border-t border-line pt-3 text-[0.78rem] leading-relaxed text-ink-2">
           Built by <a className="underline underline-offset-2" href="https://www.linkedin.com/in/william-wei-zhu/" target="_blank" rel="noreferrer">William Zhu</a>
-          {" · "}Stress scores from <a className="underline underline-offset-2" href={p.city.stress.url} target="_blank" rel="noreferrer">{p.city.stress.name}</a>{p.city.stress.by && ` by ${p.city.stress.by}`}
+          {" · "}Stress scores from <a className="underline underline-offset-2" href={p.city.stress.url} {...(p.city.stress.url.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}>{p.city.stress.name}</a>{p.city.stress.by && ` by ${p.city.stress.by}`}
           {" · "}<Link className="underline underline-offset-2" href="/privacy">Privacy</Link>
         </footer>
       </div>

@@ -52,6 +52,35 @@ export default function AboutPage() {
         </ul>
       </Section>
 
+      <Section id="stress" title="How stress is scored outside DC">
+        <p>
+          For every other city, BikeSim scores each block itself from OpenStreetMap, using the Level of Traffic Stress criteria of
+          Furth, Mekuria and Nixon (2017), the version most US cities use. It reads four things about each block: the kind of bike
+          facility, the speed limit, the number of lanes, and the type of road. OpenStreetMap has no traffic counts, so the type of road
+          stands in for traffic: a residential street is treated as quiet, an arterial as busy.
+        </p>
+        <div className="overflow-x-auto rounded-card border border-line">
+          <table className="w-full min-w-[34rem] text-left text-[0.9rem]">
+            <thead className="bg-surface text-[0.8rem] text-ink-2">
+              <tr><th className="px-3 py-2 font-semibold">Street</th><th className="px-3 py-2 font-semibold">Calm (1)</th><th className="px-3 py-2 font-semibold">Low (2)</th><th className="px-3 py-2 font-semibold">Stressful (3)</th><th className="px-3 py-2 font-semibold">Hostile (4)</th></tr>
+            </thead>
+            <tbody className="divide-y divide-line tabular-nums">
+              <tr><td className="px-3 py-2">Trail, protected bike lane</td><td className="px-3 py-2">always</td><td /><td /><td /></tr>
+              <tr><td className="px-3 py-2">Residential street</td><td className="px-3 py-2">25 mph or less</td><td className="px-3 py-2">30 to 35 mph</td><td className="px-3 py-2">40 mph+</td><td /></tr>
+              <tr><td className="px-3 py-2">Painted bike lane, 1 lane each way</td><td className="px-3 py-2">25 mph or less</td><td className="px-3 py-2">30 to 35 mph</td><td className="px-3 py-2">40 to 45 mph</td><td className="px-3 py-2">50 mph+</td></tr>
+              <tr><td className="px-3 py-2">Collector, no bike lane</td><td /><td className="px-3 py-2">20 mph</td><td className="px-3 py-2">25 to 30 mph</td><td className="px-3 py-2">35 mph+</td></tr>
+              <tr><td className="px-3 py-2">Arterial, no bike lane</td><td /><td /><td className="px-3 py-2">25 mph, 1 lane each way</td><td className="px-3 py-2">faster, or wider</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[0.9rem] text-ink-2">
+          A buffer beside a painted lane earns one level back up to 35 mph. Where OpenStreetMap has no speed limit, BikeSim uses the
+          city&apos;s legal default (20 mph on Seattle, Portland, Minneapolis and Denver side streets, 25 mph in most others, 30 in Chicago).
+          On DC&apos;s own streets this model agrees with RideScore DC within one level on 85% of the length; it rates quiet 20 mph side
+          streets one level calmer than RideScore does.
+        </p>
+      </Section>
+
       <Section title="Pick the shortest route, or the one that avoids hostile streets">
         <p>
           By default BikeSim shows the shortest route, so you can see exactly how stressful the direct ride would be.
@@ -72,7 +101,8 @@ export default function AboutPage() {
         <ul className="list-disc space-y-1.5 pl-5">
           <li>DC stress scores: RideScore DC scoring pipeline (DDOT roadway data on Open Data DC).</li>
           <li>DC street network and trails: OpenStreetMap, as prepared in the RideScore DC basemap snapshot (September 29, 2026).</li>
-          <li>Other cities: street network and stress inputs (speed limits, lanes, bike lanes) from OpenStreetMap, with official city stress maps where a city publishes one.</li>
+          <li>Other cities: street network and stress inputs (speed limits, lanes, bike lanes) from OpenStreetMap via Geofabrik extracts (October 5, 2026), scored by BikeSim as described above.</li>
+          <li>Aerial photos: DC government 2025 orthophotos in DC; USGS The National Map elsewhere.</li>
           <li>3D buildings and basemap: OpenStreetMap contributors via OpenFreeMap. DC&apos;s building heights in OpenStreetMap come from DC government data.</li>
           <li>Street photos: Google Street View.</li>
           <li>Address search: OpenStreetMap Nominatim.</li>
@@ -83,14 +113,15 @@ export default function AboutPage() {
         <ul className="list-disc space-y-1.5 pl-5">
           <li>Intersections are not scored. Crossing a busy road at a light counts the same as riding a quiet block.</li>
           <li>One-way streets are treated as two-way. Check the direction before you ride.</li>
-          <li>Separately drawn bike paths and trails are treated as calm, because the source data copies the busy road beside them.</li>
+          <li>Separately drawn bike paths and trails are treated as calm, even where they run beside a busy road.</li>
+          <li>Outside DC, scores are only as good as OpenStreetMap: a missing speed limit or bike lane changes the score. You can fix the map at openstreetmap.org and BikeSim picks it up on the next rebuild.</li>
           <li>Some underlying traffic data dates from 2020, and street photos can be several years old.</li>
           <li>Construction, weather, lighting, potholes and driver behavior change from day to day and are not in the data.</li>
         </ul>
         <p>BikeSim is a planning aid, not safety advice. Always ride with care and check conditions yourself.</p>
       </Section>
 
-      <Section title="Made in DC, in the open">
+      <Section title="Made in DC, now national, in the open">
         <p>
           BikeSim began as RideSim DC, built for the Civic Tech DC hackathon (October 3, 2026) on top of RideScore DC.
           The code is open on <a className={ext} href="https://github.com/william-wei-zhu/ridesimdc" target="_blank" rel="noreferrer">GitHub</a>.

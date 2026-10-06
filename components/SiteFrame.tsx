@@ -30,9 +30,9 @@ export function SiteFrame({ children, wide }: { children: React.ReactNode; wide?
 }
 
 /** A content section: heading states the point, body follows. */
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export function Section({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
   return (
-    <section className="mt-10">
+    <section id={id} className="mt-10 scroll-mt-20">
       <h2 className="text-[1.35rem] font-bold">{title}</h2>
       <div className="mt-3 space-y-3 text-[1rem] leading-[1.7]">{children}</div>
     </section>

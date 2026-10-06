@@ -79,3 +79,13 @@ def test_arterial_without_facility_is_hostile():
 def test_city_arterial_default_applies_to_unsigned_arterials():
     assert classify({"highway": "secondary", "lanes": "2"}, 20).speed == 30
     assert classify({"highway": "secondary", "lanes": "2"}, 20, arterial_mph=25).speed == 25
+
+
+@pytest.mark.parametrize("tags,ok", [
+    ({"highway": "service", "service": "alley"}, True),
+    ({"highway": "service", "name": "Campus Drive"}, True),
+    ({"highway": "service"}, False),
+    ({"highway": "service", "bicycle": "designated"}, True),
+])
+def test_service_roads(tags, ok):
+    assert usable(tags) is ok

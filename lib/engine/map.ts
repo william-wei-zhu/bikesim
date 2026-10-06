@@ -127,7 +127,7 @@ class ImageryControl implements maplibregl.IControl {
 export function addLayers(map: maplibregl.Map, city: City) {
   const firstLabel = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
   map.addSource("rs-streets", { type: "vector", url: `pmtiles://${cityDataBase(city)}/streets.pmtiles`,
-    attribution: city.stress.name === "OpenStreetMap" ? "Street stress: BikeSim on OpenStreetMap" : `Street stress: ${city.stress.name}` });
+    attribution: `Street stress: ${city.stress.name}` });
   map.addSource("rs-route-fast", { type: "geojson", data: EMPTY_FC });
   map.addSource("rs-route", { type: "geojson", data: EMPTY_FC, lineMetrics: true });
   map.addSource("rs-break", { type: "geojson", data: EMPTY_FC });

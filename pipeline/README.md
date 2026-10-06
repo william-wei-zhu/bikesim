@@ -35,13 +35,20 @@ block scores the same in any city as it would in DC. The inputs come from OpenSt
 Dropped before routing: motorways, sidewalks and footpaths that don't allow bikes, parking aisles,
 driveways, private roads, and anything not connected to the main network.
 
-Official city layers replace the OSM estimate where they exist and can be joined:
+Official city layers replace the OSM estimate where they exist (`overrides` in `cities.toml`,
+code in `overrides.py`). A layer keyed by OSM way id is a straight lookup; a layer on the city's own
+centerlines is matched by geometry (`join = "spatial"`): each ~10 m piece of an OSM road takes the
+nearest official segment within 12 m whose bearing is within 20 degrees, and the road gets the LTS of
+the segment it overlaps most if at least half its length matched. Trails and cycleways are not
+spatially joined (a sidepath beside an arterial would inherit the arterial's LTS 4).
+Fetch layers into `sources/<city>/` (gitignored) with `scripts/fetch_arcgis.py`; the exact commands
+are in `cities.toml`.
 
-| City | Official layer | Status |
+| City | Official layer | Join |
 |---|---|---|
-| Chicago | Cook County LTS 2022 (`gis.cookcountyil.gov` DOTH_expanded/13), keyed by OSM `way_id` | supported (export to GeoJSON into `sources/chicago/`) |
-| Boston | Boston BLTS 2024 (boston.gov/blts) | needs a spatial join to OSM ways |
-| Philadelphia | DVRPC LTS Network (catalog.dvrpc.org, `dvrpc/gis-lts-calc`) | needs a spatial join |
+| Chicago | Cook County LTS 2022 (`gis.cookcountyil.gov` DOTH_expanded/MapServer/13; `way_id`, `ltsrank`) | OSM way id, then spatial for ways redrawn since 2022 |
+| Boston | Boston BLTS 2024 (boston.gov/blts; ArcGIS `BLTS_2024` FeatureServer; `lts`, 0 = no bike access) | spatial |
+| Philadelphia | DVRPC LTS Network (catalog.dvrpc.org, `dvrpc/gis-lts-calc`; `lts`) | spatial |
 | Seattle | SDOT Bicycle LTS | percentile-based, not 1-4 Furth; use as a cross-check only |
 
 ## Output

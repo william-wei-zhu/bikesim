@@ -107,6 +107,9 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: boo
     h = _Ways(city.box)
     h.apply_file(str(pbf), locations=True)
     ov = Overrides.load(city.overrides)
+    if ov.spatial:
+        # Layers on the city's own centerlines are matched by geometry; roads only (see overrides.py).
+        ov.join({w.id: [h.loc[r] for r in w.refs] for w in h.ways if w.tags.get("highway") in L.ROADS})
 
     # Intersections: a node shared by two ways, or a way's end, splits blocks.
     use = Counter(r for w in h.ways for r in w.refs)
@@ -117,6 +120,7 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: boo
     names: list[str] = []
     name_ix: dict[str, int] = {}
     blocks: list[list] = []
+    n_official = 0
     raw_edges = []  # (u_osm, v_osm, coords, facts_lts, src, name, block)
     for w in h.ways:
         f = L.classify(w.tags, city.default_mph, city.arterial_mph)
@@ -124,6 +128,7 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: boo
         o = ov.get(w.id)
         if o is not None:
             lts, src = o, SRC.index("official")
+            n_official += 1
         name = w.tags.get("name", "")
         if name not in name_ix:
             name_ix[name] = len(names)
@@ -217,6 +222,7 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: boo
         "km_by_lts": {str(k): round(v / 1000, 1) for k, v in sorted(by_lts.items())},
         "share_by_lts": {str(k): round(v / total, 3) for k, v in sorted(by_lts.items())},
         "official_overrides": ov.describe(),
+        "official_ways": n_official,
         "license": "Derived from OpenStreetMap (ODbL 1.0). © OpenStreetMap contributors.",
     }
     (out / "meta.json").write_text(json.dumps(meta, indent=2))

@@ -66,8 +66,13 @@ def usable(tags: dict[str, str]) -> bool:
         return False
     if tags.get("access") in {"no", "private"} and bike not in {"yes", "designated", "permissive"}:
         return False
+    if hw == "service":
+        # Alleys and named service roads route; unnamed lot aisles, driveways and access lanes only add bulk.
+        if tags.get("service") in {"parking_aisle", "driveway", "drive-through", "emergency_access"}:
+            return False
+        return tags.get("service") == "alley" or bool(tags.get("name")) or bike in {"yes", "designated", "permissive"}
     if hw in ROADS:
-        return tags.get("service") not in {"parking_aisle", "driveway", "drive-through", "emergency_access"}
+        return True
     if hw == "cycleway":
         return True
     if hw in PATHS:

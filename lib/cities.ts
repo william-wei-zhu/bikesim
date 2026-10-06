@@ -22,7 +22,7 @@ export interface City {
   searchHint: string;
   /** Lower-case words that mean the search already names the city. */
   searchWords: string[];
-  /** Where the stress scores come from, credited in the trip panel, footer and About. */
+  /** Where the stress scores come from, credited in the trip panel, map attribution and About. */
   stress: { name: string; url: string; by?: string };
   /** What the per-block facts come from, for the "estimated" note: "DDOT's street records". */
   records: string;
@@ -37,7 +37,8 @@ export interface City {
   aerial?: { tiles: string; bounds: [number, number, number, number]; attribution: string };
 }
 
-const OSM_LTS = { name: "OpenStreetMap", url: "https://www.openstreetmap.org/copyright", by: "BikeSim's stress model" };
+// Stress scored by BikeSim from OpenStreetMap tags (pipeline/src/bikesim_data/lts.py); explained on the About page.
+const OSM_LTS = { name: "BikeSim's model on OpenStreetMap data", url: "/about#stress" };
 const OSM_RECORDS = "OpenStreetMap's street tags";
 
 // USGS National Map orthoimagery: public domain, covers every US city.

@@ -5,7 +5,7 @@ import { Btn } from "@/components/ui";
 import type { City } from "@/lib/cities";
 
 export function Loading({ city, error, onRetry }: { city: City; error: string | null; onRetry: () => void }) {
-  const PHASES = [`Loading ${city.short} streets…`, `Joining ${city.stress.name} stress scores…`, `Building ${city.short} in 3D…`];
+  const PHASES = [`Loading ${city.short} streets…`, `Scoring stress on every block…`, `Building ${city.short} in 3D…`];
   const [i, setI] = useState(0);
   useEffect(() => {
     if (error) return;

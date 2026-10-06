@@ -41,9 +41,13 @@ name = "Chicago"
 box = [-87.94, 41.64, -87.52, 42.03]
 default_mph = 30   # Chicago municipal code citywide default unless posted
 pbf = "https://download.geofabrik.de/north-america/us/illinois-latest.osm.pbf"
-# Cook County LTS 2022 (OSM-based, carries way_id). Export
-# https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/13 to GeoJSON first.
-overrides = [{ name = "Cook County LTS 2022", path = "sources/chicago/cook_lts_2022.geojson", way_id = "way_id", lts = "ltsrank" }]
+# Cook County LTS 2022 (OSM 2022-based, carries way_id; fields name, ltsrank "1".."4", way_id). Fetch with
+# uv run python scripts/fetch_arcgis.py https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/13 sources/chicago/cook_lts_2022.geojson --box -87.94 41.64 -87.52 42.03 --fields name,ltsrank,way_id
+# The second entry matches the same layer by geometry for OSM ways split or redrawn since 2022.
+overrides = [
+  { name = "Cook County LTS 2022", path = "sources/chicago/cook_lts_2022.geojson", way_id = "way_id", lts = "ltsrank" },
+  { name = "Cook County LTS 2022 (spatial)", path = "sources/chicago/cook_lts_2022.geojson", lts = "ltsrank", join = "spatial" },
+]
 
 [city.austin]
 name = "Austin"
@@ -63,7 +67,9 @@ box = [-71.19, 42.23, -70.99, 42.40]
 default_mph = 25
 arterial_mph = 25   # Boston 2017: 25 mph citywide default (MGL c.90 s.17C)
 pbf = "https://download.geofabrik.de/north-america/us/massachusetts-latest.osm.pbf"
-# Official: Boston BLTS 2024 (boston.gov/blts). Needs a spatial join to OSM ways (not built yet).
+# Boston BLTS 2024 (boston.gov/blts) on Boston Street Segments; lts 1-4, 0 = no bike access. Fetch with
+# uv run python scripts/fetch_arcgis.py https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/BLTS_2024/FeatureServer/0 sources/boston/blts_2024.geojson --fields name,segid,bike_fac,type,speedlimit,lts
+overrides = [{ name = "Boston BLTS 2024", path = "sources/boston/blts_2024.geojson", lts = "lts", join = "spatial" }]
 
 [city.new-york]
 name = "New York City"
@@ -77,7 +83,9 @@ name = "Philadelphia"
 box = [-75.28, 39.87, -74.96, 40.14]
 default_mph = 25   # Pennsylvania urban district default
 pbf = "https://download.geofabrik.de/north-america/us/pennsylvania-latest.osm.pbf"
-# Official: DVRPC LTS Network (catalog.dvrpc.org). Needs a spatial join to OSM ways (not built yet).
+# DVRPC LTS Network (catalog.dvrpc.org, dvrpc/gis-lts-calc); one feature per link direction. Fetch with
+# uv run python scripts/fetch_arcgis.py https://arcgis.dvrpc.org/portal/rest/services/transportation/lts_network/FeatureServer/0 sources/philadelphia/dvrpc_lts.geojson --box -75.28 39.87 -74.96 40.14 --fields no,fromnodeno,tonodeno,typeno,bike_facility,lts
+overrides = [{ name = "DVRPC LTS Network", path = "sources/philadelphia/dvrpc_lts.geojson", lts = "lts", join = "spatial" }]
 
 [city.minneapolis]
 name = "Minneapolis"

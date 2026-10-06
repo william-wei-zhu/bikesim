@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowRight, ArrowUpDown, Bike, Bookmark, BookmarkCheck, ChevronDown, ChevronRight, ChevronUp, MapPin, Share2 } from "lucide-react";
 import { authConfigured, getAccount, saveTrip } from "@/lib/auth";
 import { AuthSheet } from "@/components/AuthSheet";
+import { track } from "@/lib/analytics";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch, StretchWhy } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
@@ -95,7 +96,7 @@ export function TripPanel(p: {
             <p className="eyebrow mb-2">Try a trip</p>
             <div className="flex flex-wrap gap-2">
               {p.city.examples.map((ex) => (
-                <Btn key={ex.label} size="sm" variant="quiet" onClick={() => { p.setFrom(ex.from); p.setTo(ex.to); }}>{ex.label}</Btn>
+                <Btn key={ex.label} size="sm" variant="quiet" onClick={() => { p.setFrom(ex.from); p.setTo(ex.to); track("example_trip", { city: p.city.slug, trip: ex.label }); }}>{ex.label}</Btn>
               ))}
             </div>
             
@@ -223,6 +224,7 @@ function SaveTrip({ city, from, to }: { city: string; from: Place; to: Place }) 
   const save = async () => {
     try {
       await saveTrip({ city, label: `${from.label} to ${to.label}`, from, to });
+      track("trip_saved", { city });
       setSavedKey(key); setState("saved");
     } catch { setState("error"); }
   };

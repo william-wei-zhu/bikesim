@@ -50,6 +50,10 @@ export default function PrivacyPage() {
             <span className="font-semibold">Map tiles and street data:</span> the map and buildings load from OpenFreeMap; street stress data and aerial photos load from our Google Cloud Storage bucket and USGS (DC photos from DC government).
           </li>
           <li>
+            <span className="font-semibold">Usage analytics:</span> PostHog counts what people do on the site (pages opened, routes planned, rides started)
+            so we can see what works. No session recordings, and if you sign in it gets an account id, never your email.
+          </li>
+          <li>
             <span className="font-semibold">Hosting:</span> the site runs on Vercel, which keeps standard server logs.
           </li>
         </ul>

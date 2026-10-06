@@ -21,6 +21,7 @@ import { FinishCard } from "./FinishCard";
 import { readDefaultView, readRider } from "@/lib/prefs";
 import { authConfigured, getAccount, claimStreetViewRide, freeStreetViewUsed, markFreeStreetViewUsed, completeEmailLink, isEmailLinkReturn, DAILY_STREETVIEW_RIDES } from "@/lib/auth";
 import { AuthSheet } from "@/components/AuthSheet";
+import { track } from "@/lib/analytics";
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_TILES_KEY || "";
 const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
@@ -107,6 +108,12 @@ export default function MapApp({ city }: { city: City }) {
     if (!pair.calm || !pair.fastest) return { error: "none" };
     return { a, b, calm: pair.calm, fastest: pair.fastest };
   }, [net, from, to]);
+  useEffect(() => {
+    if (!routes) return;
+    if ("error" in routes) { track("route_failed", { city: city.slug, reason: routes.error }); return; }
+    track("route_planned", { city: city.slug, km: Math.round(routes.fastest.lengthM / 100) / 10,
+      hostile_km: Math.round(routes.fastest.byLts[4] / 100) / 10, calm_route_km: Math.round(routes.calm.lengthM / 100) / 10 });
+  }, [routes, city]);
   const ok = routes && "calm" in routes ? routes : null;
   // The route being ridden, and the other one (shown dotted for comparison).
   const chosen = ok ? (kind === "short" ? ok.fastest : ok.calm) : null;
@@ -210,6 +217,7 @@ export default function MapApp({ city }: { city: City }) {
   const endRef = useRef<() => void>(() => {});
   useEffect(() => { endRef.current = () => {
     stopRide(); setFinished(kind);
+    track("ride_finished", { city: city.slug, route: kind });
     const map = mapRef.current;
     if (map && line) {
       const xs = line.coords.map((c) => c[0]), ys = line.coords.map((c) => c[1]);
@@ -270,18 +278,25 @@ export default function MapApp({ city }: { city: City }) {
     };
     if (getAccount()) return claim();
     if (!freeStreetViewUsed()) { markFreeStreetViewUsed(); svGranted.current = true; return "street"; }
+    track("streetview_gate_shown", { city: city.slug });
     const v = await new Promise<View | null>((resolve) => setGate(() => resolve));
     setGate(null);
+    track("streetview_gate_result", { city: city.slug, result: v ?? "closed" });
     return v === "street" ? claim() : v;
-  }, [toast]);
+  }, [toast, city]);
 
   // Each ride starts in the view chosen in Settings (switchable during the ride).
   const beginRide = useCallback(async (ln?: typeof line) => {
     svGranted.current = false;
     let v: View | null = GOOGLE_KEY ? readDefaultView() : "model";
     if (v === "street") v = await askStreetView();
-    if (v) startRide(ln, v);
-  }, [askStreetView, startRide]);
+    if (v) {
+      startRide(ln, v);
+      const c = (ln ?? line)?.coords ?? [];
+      const m = c.reduce((t, p, i) => (i ? t + distM(c[i - 1][0], c[i - 1][1], p[0], p[1]) : 0), 0);
+      track("ride_started", { city: city.slug, view: v, km: Math.round(m / 100) / 10 });
+    }
+  }, [askStreetView, startRide, city, line]);
 
   const switchView = useCallback(async (v: View) => {
     if (v === "street") {
@@ -309,6 +324,7 @@ export default function MapApp({ city }: { city: City }) {
   const shareRide = useCallback(async () => {
     const url = window.location.href;
     try {
+      track("trip_shared", { city: city.slug });
       if (navigator.share) { await navigator.share({ title: `BikeSim ${city.short}`, text: `Feel this ${city.short} bike trip before you ride it`, url }); return; }
       await navigator.clipboard.writeText(url);
       toast("Link copied. Anyone who opens it gets this exact trip.");

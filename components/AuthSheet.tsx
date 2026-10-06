@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Box, Mail, X } from "lucide-react";
 import { Btn } from "@/components/ui";
 import { sendEmailLink, signInWithGoogle, completeEmailLink } from "@/lib/auth";
+import { track } from "@/lib/analytics";
 
 export type AuthReason = "streetview" | "save" | "account" | "confirm";
 
@@ -34,7 +35,7 @@ export function AuthSheet({ reason, onDone, onClose, onRide3D }: {
 
   const google = async () => {
     setState("busy"); setMsg("");
-    try { await signInWithGoogle(); onDone(); }
+    try { await signInWithGoogle(); track("signed_in", { method: "google", reason }); onDone(); }
     catch (e) {
       const code = (e as { code?: string }).code ?? "";
       setState("error");
@@ -54,6 +55,7 @@ export function AuthSheet({ reason, onDone, onClose, onRide3D }: {
         onDone();
       } else {
         await sendEmailLink(email.trim());
+        track("signin_link_sent", { reason });
         setState("sent");
       }
     } catch {

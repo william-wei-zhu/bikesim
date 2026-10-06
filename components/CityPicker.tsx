@@ -57,7 +57,7 @@ function CityCard({ c, featured }: { c: City; featured: boolean }) {
             <span className="absolute left-3 top-3 hidden rounded-full bg-paper/95 px-3 py-1 text-[0.76rem] font-bold shadow-panel sm:block">Official city data · crash history</span>
           )}
         </span>
-        <span className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3">
+        <span className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 sm:flex-none">
           <span className="min-w-0 flex-1">
             <span className={`block font-display font-bold leading-tight ${featured ? "text-[1.15rem] sm:text-[1.4rem]" : "text-[1.1rem]"}`}>
               {c.name} <span className="font-mono text-[0.76rem] font-normal text-ink-2">{c.state}</span>

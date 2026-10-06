@@ -11,17 +11,17 @@ import { AuthSheet } from "@/components/AuthSheet";
 /** Site header. On a city's map, the logo resets that map and the city chip switches cities. */
 export function Header({ city }: { city?: City }) {
   return (
-    <header className="relative z-20 border-b border-line bg-paper">
+    <header className="relative z-40 border-b border-line bg-paper">
       <div className="flex h-16 items-center gap-2 px-3 md:gap-3 md:px-5">
         <Link href={city ? `/${city.slug}` : "/"} className="flex shrink-0 items-center gap-2.5" aria-label={city ? `BikeSim ${city.short} home` : "BikeSim home"}
           // Already on the map: Next keeps the page mounted, so tell it to reset to the start screen.
           onClick={() => window.dispatchEvent(new Event("rs-home"))}>
-          <Image src="/brand/logo-mark-512.png" alt="" width={40} height={40} className="size-10 rounded-[10px]" priority />
+          <Image src="/brand/bikesim-mark-512.png" alt="" width={40} height={40} className="size-10 rounded-[10px]" priority />
           <span className="hidden font-display text-[1.25rem] font-bold tracking-tight sm:inline">BikeSim</span>
         </Link>
         {city && <CitySwitcher city={city} />}
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/about" aria-label="About" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-[0.78rem] font-semibold hover:bg-surface md:px-4">
+        <div className="ml-auto flex items-center gap-1.5 md:gap-2">
+          <Link href="/about" aria-label="About" className={`${city ? "hidden sm:inline-flex" : "inline-flex"} min-h-10 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-[0.78rem] font-semibold hover:bg-surface md:px-4`}>
             <Info className="size-4" aria-hidden /> <span className="hidden md:inline">About</span>
           </Link>
           <Link href="/settings" aria-label="Settings" className="grid size-10 place-items-center rounded-full border-2 border-ink hover:bg-surface">
@@ -45,9 +45,9 @@ function CitySwitcher({ city }: { city: City }) {
     return () => { document.removeEventListener("mousedown", close); window.removeEventListener("keydown", esc); };
   }, [open]);
   return (
-    <div ref={box} className="relative min-w-0">
+    <div ref={box} className="relative shrink-0">
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="listbox" aria-label={`City: ${city.name}. Change city`}
-        className="inline-flex min-h-10 min-w-0 max-w-full items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[0.82rem] font-semibold hover:border-ink cursor-pointer">
+        className="inline-flex min-h-10 max-w-[10rem] items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[0.82rem] font-semibold hover:border-ink cursor-pointer">
         <MapPin className="size-4 shrink-0" aria-hidden /> <span className="truncate">{city.short}</span>
         <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>

@@ -15,7 +15,7 @@ export function Loading({ city, error, onRetry }: { city: City; error: string | 
   return (
     <div className="absolute inset-0 z-30 grid place-items-center bg-paper/90 p-6">
       <div className="w-full max-w-sm rounded-card border border-line bg-paper p-6 text-center shadow-panel">
-        <Image src="/brand/logo-mark-512.png" alt="" width={88} height={88} className="mx-auto size-22 rounded-2xl" priority />
+        <Image src="/brand/bikesim-mark-512.png" alt="" width={88} height={88} className="mx-auto size-22 rounded-2xl" priority />
         {error ? (
           <>
             <h2 className="mt-4 text-[1.2rem] font-bold">The map data did not load.</h2>

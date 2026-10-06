@@ -20,7 +20,7 @@ const ext = "underline underline-offset-2 decoration-2 decoration-accent";
 export default function AboutPage() {
   return (
     <SiteFrame>
-      <Image src="/brand/logo-mark-512.png" alt="BikeSim logo" width={160} height={160} className="size-32 rounded-[28px] md:size-40" priority />
+      <Image src="/brand/bikesim-mark-512.png" alt="BikeSim logo" width={160} height={160} className="size-32 rounded-[28px] md:size-40" priority />
       <h1 className="mt-6 text-[2rem] font-bold md:text-[2.6rem]">Feel it before you ride it.</h1>
       <p className="mt-4 text-[1.1rem] leading-[1.7]">
         BikeSim lets you ride a city bike trip before you get on a bike. Pick a city, a start and a destination,

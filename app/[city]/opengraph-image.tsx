@@ -17,7 +17,7 @@ const dataUrl = async (path: string, type: string) => {
 /** Share card per city: the city's stress map on the right, name and tagline on the left. */
 export default async function Image({ params }: { params: Promise<{ city: string }> }) {
   const city = getCity((await params).city)!;
-  const [map, logo] = await Promise.all([dataUrl(`cities/${city.slug}.jpg`, "image/jpeg"), dataUrl("brand/logo-mark-512.png", "image/png")]);
+  const [map, logo] = await Promise.all([dataUrl(`cities/${city.slug}.jpg`, "image/jpeg"), dataUrl("brand/bikesim-mark-512.png", "image/png")]);
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", background: "#ffffff", color: "#082b54" }}>

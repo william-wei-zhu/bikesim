@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, ArrowUpDown, Bike, Bookmark, BookmarkCheck, ChevronDown, ChevronRight, ChevronUp, MapPin, Share2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpDown, Bike, Bookmark, BookmarkCheck, ChevronDown, ChevronRight, ChevronUp, LocateFixed, Loader2, MapPin, Share2 } from "lucide-react";
 import { authConfigured, getAccount, saveTrip } from "@/lib/auth";
 import { AuthSheet } from "@/components/AuthSheet";
 import { track } from "@/lib/analytics";
@@ -72,6 +72,7 @@ export function TripPanel(p: {
             <div className="flex-1"><SearchBox city={p.city} placeholder="Start: search, or click the map" pois={p.pois} value={p.from} onPick={p.setFrom} onClear={() => p.setFrom(null)} /></div>
             {!p.from && <PickBtn on={() => p.setPick("from")} />}
           </div>
+          {!p.from && <MyLocation city={p.city} onFound={p.setFrom} />}
           <div className={cn("flex items-center gap-2 rounded-full", p.awaiting === "to" && "ring-2 ring-accent ring-offset-2 ring-offset-paper")}>
             <div className="flex-1"><SearchBox city={p.city} placeholder="End: search, or click the map" pois={p.pois} value={p.to} onPick={p.setTo} onClear={() => p.setTo(null)} /></div>
             {!p.to && <PickBtn on={() => p.setPick("to")} />}
@@ -204,6 +205,40 @@ export function TripPanel(p: {
         </footer>
       </div>
     </aside>
+  );
+}
+
+/** Start from where the device is (GPS / browser location). Only inside this city's area. */
+function MyLocation({ city, onFound }: { city: City; onFound: (pl: Place) => void }) {
+  const [state, setState] = useState<"idle" | "busy" | "msg">("idle");
+  const [msg, setMsg] = useState("");
+  const locate = () => {
+    if (!navigator.geolocation) { setState("msg"); setMsg("This browser can't share your location. Search or tap the map instead."); return; }
+    setState("busy");
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { longitude: x, latitude: y } = pos.coords;
+      const [w, s, e, n] = city.box;
+      if (x < w - 0.05 || x > e + 0.05 || y < s - 0.05 || y > n + 0.05) {
+        setState("msg"); setMsg(`You're outside ${city.short} right now. Search or tap the map for a start in ${city.short}.`); return;
+      }
+      setState("idle");
+      track("start_from_location", { city: city.slug });
+      onFound({ label: "My location", x, y });
+    }, (err) => {
+      setState("msg");
+      setMsg(err.code === err.PERMISSION_DENIED ? "Location is blocked for this site. Allow it in your browser settings, or search instead."
+        : "Couldn't find your location. Try again, or search instead.");
+    }, { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 });
+  };
+  return (
+    <div>
+      <button onClick={locate} disabled={state === "busy"}
+        className="inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-accent bg-accent/10 px-4 text-[0.85rem] font-semibold text-ink hover:bg-accent/20 disabled:opacity-60 cursor-pointer">
+        {state === "busy" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LocateFixed className="size-4 text-accent-ink" aria-hidden />}
+        {state === "busy" ? "Finding you…" : "Start from my current location"}
+      </button>
+      {state === "msg" && <p role="status" className="mt-1.5 text-[0.8rem] text-ink-2">{msg}</p>}
+    </div>
   );
 }
 

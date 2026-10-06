@@ -12,6 +12,9 @@ export interface City {
   short: string;
   /** State or district, for the city picker: "WA". */
   state: string;
+  /** The city's own emoji and color: the city switcher, the dropdown and the home cards wear them. */
+  emoji: string;
+  color: string;
   live: boolean;
   /** Opening camera over downtown, north up. */
   center: [number, number];
@@ -57,7 +60,7 @@ function osmCity(c: Omit<City, "stress" | "records" | "crashes" | "live" | "zoom
 
 export const CITIES: City[] = [
   {
-    slug: "dc", name: "Washington, DC", short: "DC", state: "DC", live: true,
+    slug: "dc", emoji: "🏛️", color: "#d62839", name: "Washington, DC", short: "DC", state: "DC", live: true,
     // Opens over downtown and the Mall so the 3D city reads immediately (buildings appear from zoom 13).
     center: [-77.0275, 38.8975], zoom: 13.4,
     box: [-77.12, 38.79, -76.909, 38.996],
@@ -76,7 +79,7 @@ export const CITIES: City[] = [
     },
   },
   osmCity({
-    slug: "new-york", name: "New York City", short: "NYC", state: "NY", center: [-73.9857, 40.7484], zoom: 13.2,
+    slug: "new-york", emoji: "🗽", color: "#f5a700", name: "New York City", short: "NYC", state: "NY", center: [-73.9857, 40.7484], zoom: 13.2,
     box: [-74.26, 40.49, -73.70, 40.92], searchHint: ", New York, NY",
     searchWords: ["new york", "nyc", "brooklyn", "queens", "bronx", "manhattan", "staten island"], transit: "Subway", data: "2026-10-06",
     examples: [
@@ -86,7 +89,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "seattle", name: "Seattle", short: "Seattle", state: "WA", center: [-122.335, 47.608],
+    slug: "seattle", emoji: "☕", color: "#0f9d8a", name: "Seattle", short: "Seattle", state: "WA", center: [-122.335, 47.608],
     box: [-122.46, 47.48, -122.22, 47.74], searchHint: ", Seattle, WA", searchWords: ["seattle"], transit: "Link", data: "2026-10-06",
     examples: [
       trip(p("Fremont", 47.6510, -122.3500), p("Pike Place Market", 47.6097, -122.3422)),
@@ -95,7 +98,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "portland", name: "Portland", short: "Portland", state: "OR", center: [-122.676, 45.52],
+    slug: "portland", emoji: "🌹", color: "#d6457c", name: "Portland", short: "Portland", state: "OR", center: [-122.676, 45.52],
     box: [-122.84, 45.43, -122.47, 45.66], searchHint: ", Portland, OR", searchWords: ["portland"], transit: "MAX", data: "2026-10-06",
     examples: [
       trip(p("Alberta Arts", 45.5590, -122.6450), p("Pioneer Square", 45.5189, -122.6793)),
@@ -104,7 +107,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "san-francisco", name: "San Francisco", short: "SF", state: "CA", center: [-122.4194, 37.7793],
+    slug: "san-francisco", emoji: "🌉", color: "#ff6f3c", name: "San Francisco", short: "SF", state: "CA", center: [-122.4194, 37.7793],
     box: [-122.52, 37.70, -122.35, 37.84], searchHint: ", San Francisco, CA", searchWords: ["san francisco", "sf"], transit: "BART", data: "2026-10-06",
     examples: [
       trip(p("The Mission", 37.7599, -122.4148), p("Ferry Building", 37.7955, -122.3937)),
@@ -113,7 +116,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "los-angeles", name: "Los Angeles", short: "LA", state: "CA", center: [-118.2437, 34.0522], zoom: 13,
+    slug: "los-angeles", emoji: "🌴", color: "#8e44ad", name: "Los Angeles", short: "LA", state: "CA", center: [-118.2437, 34.0522], zoom: 13,
     box: [-118.67, 33.70, -118.15, 34.34], searchHint: ", Los Angeles, CA", searchWords: ["los angeles", "la"], transit: "Metro", data: "2026-10-06",
     examples: [
       trip(p("Echo Park", 34.0782, -118.2606), p("Union Station", 34.0562, -118.2365)),
@@ -122,7 +125,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "chicago", name: "Chicago", short: "Chicago", state: "IL", center: [-87.6298, 41.8818],
+    slug: "chicago", emoji: "🍕", color: "#2b7de9", name: "Chicago", short: "Chicago", state: "IL", center: [-87.6298, 41.8818],
     box: [-87.94, 41.64, -87.52, 42.03], searchHint: ", Chicago, IL", searchWords: ["chicago"], transit: "L", data: "2026-10-06",
     stress: { name: "Cook County LTS 2023", url: "https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/14", by: "Cook County DOTH" }, records: "Cook County's stress map",
     examples: [
@@ -132,7 +135,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "boston", name: "Boston", short: "Boston", state: "MA", center: [-71.0589, 42.3601],
+    slug: "boston", emoji: "🦞", color: "#1e7b4a", name: "Boston", short: "Boston", state: "MA", center: [-71.0589, 42.3601],
     box: [-71.19, 42.23, -70.99, 42.40], searchHint: ", Boston, MA", searchWords: ["boston"], transit: "T", data: "2026-10-06",
     stress: { name: "Boston BLTS 2024", url: "https://www.boston.gov/departments/transportation", by: "City of Boston" }, records: "Boston's stress map",
     examples: [
@@ -142,7 +145,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "philadelphia", name: "Philadelphia", short: "Philly", state: "PA", center: [-75.1652, 39.9526],
+    slug: "philadelphia", emoji: "🔔", color: "#3949ab", name: "Philadelphia", short: "Philly", state: "PA", center: [-75.1652, 39.9526],
     box: [-75.28, 39.87, -74.96, 40.14], searchHint: ", Philadelphia, PA", searchWords: ["philadelphia", "philly"], transit: "SEPTA", data: "2026-10-06",
     stress: { name: "DVRPC LTS network", url: "https://catalog.dvrpc.org/dataset/dvrpc-level-of-traffic-stress-lts-network", by: "DVRPC" }, records: "DVRPC's stress map",
     examples: [
@@ -152,7 +155,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "pittsburgh", name: "Pittsburgh", short: "Pittsburgh", state: "PA", center: [-79.9959, 40.4406],
+    slug: "pittsburgh", emoji: "⚙️", color: "#546e7a", name: "Pittsburgh", short: "Pittsburgh", state: "PA", center: [-79.9959, 40.4406],
     box: [-80.10, 40.36, -79.86, 40.51], searchHint: ", Pittsburgh, PA", searchWords: ["pittsburgh"], transit: "T", data: "2026-10-06",
     examples: [
       trip(p("Lawrenceville", 40.4670, -79.9600), p("Point State Park", 40.4416, -80.0127)),
@@ -161,7 +164,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "minneapolis", name: "Minneapolis", short: "Minneapolis", state: "MN", center: [-93.265, 44.9778],
+    slug: "minneapolis", emoji: "🛶", color: "#7cb342", name: "Minneapolis", short: "Minneapolis", state: "MN", center: [-93.265, 44.9778],
     box: [-93.33, 44.89, -93.19, 45.06], searchHint: ", Minneapolis, MN", searchWords: ["minneapolis"], transit: "Light rail", data: "2026-10-06",
     examples: [
       trip(p("Uptown", 44.9490, -93.2980), p("Stone Arch Bridge", 44.9808, -93.2531)),
@@ -170,7 +173,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "denver", name: "Denver", short: "Denver", state: "CO", center: [-104.9903, 39.7392],
+    slug: "denver", emoji: "🏔️", color: "#8d5a3b", name: "Denver", short: "Denver", state: "CO", center: [-104.9903, 39.7392],
     box: [-105.11, 39.61, -104.60, 39.91], searchHint: ", Denver, CO", searchWords: ["denver"], transit: "Light rail", data: "2026-10-06",
     examples: [
       trip(p("Highlands", 39.7620, -105.0110), p("Union Station", 39.7530, -105.0002)),
@@ -179,7 +182,7 @@ export const CITIES: City[] = [
     ],
   }),
   osmCity({
-    slug: "austin", name: "Austin", short: "Austin", state: "TX", center: [-97.7431, 30.2672],
+    slug: "austin", emoji: "🎸", color: "#bf5700", name: "Austin", short: "Austin", state: "TX", center: [-97.7431, 30.2672],
     box: [-97.94, 30.10, -97.56, 30.52], searchHint: ", Austin, TX", searchWords: ["austin"], transit: "CapMetro", data: "2026-10-06",
     examples: [
       trip(p("Hyde Park", 30.3050, -97.7290), p("Texas Capitol", 30.2747, -97.7404)),
@@ -190,6 +193,12 @@ export const CITIES: City[] = [
 ];
 
 export const LIVE_CITIES = CITIES.filter((c) => c.live);
+
+/** Text color that reads on a city's color: navy on the light ones (NYC taxi yellow, Minneapolis green), white on the rest. */
+export function cityInk(c: City) {
+  const n = parseInt(c.color.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#082b54" : "#ffffff";
+}
 
 export function getCity(slug: string | null | undefined): City | undefined {
   return CITIES.find((c) => c.slug === slug);

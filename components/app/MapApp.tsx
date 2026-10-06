@@ -30,13 +30,16 @@ const VIEWS: { value: View; label: string }[] = GOOGLE_KEY
 const STREET_MPS = 5;   // Street View pace at 1x (about 18 km/h, a real riding pace) so photos can keep up
 const MODEL_MPS = 15;   // 3D model pace at 1x
 
-function readUrl() {
+function readUrl(city: City) {
   const p = new URLSearchParams(window.location.search);
+  const [w, s, e, n] = city.box;
   const place = (k: string): Place | null => {
     const v = p.get(k); if (!v) return null;
     const [x, y, ...rest] = v.split(",");
     const X = Number(x), Y = Number(y);
-    return Number.isFinite(X) && Number.isFinite(Y) ? { x: X, y: Y, label: rest.join(",") || "Dropped pin" } : null;
+    // A point from another city (an old link, a switch) is ignored rather than routed across the country.
+    if (!(X >= w - 0.1 && X <= e + 0.1 && Y >= s - 0.1 && Y <= n + 0.1)) return null;
+    return { x: X, y: Y, label: rest.join(",") || "Dropped pin" };
   };
   return { from: place("from"), to: place("to"), kind: (p.get("route") === "calm" ? "calm" : "short") as RouteKind };
 }
@@ -54,7 +57,7 @@ export default function MapApp({ city }: { city: City }) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
 
-  const [init] = useState(() => (typeof window === "undefined" ? null : readUrl()));
+  const [init] = useState(() => (typeof window === "undefined" ? null : readUrl(city)));
   const [from, setFrom] = useState<Place | null>(init?.from ?? null);
   const [to, setTo] = useState<Place | null>(init?.to ?? null);
   const [pick, setPick] = useState<"from" | "to" | null>(null);
@@ -166,8 +169,11 @@ export default function MapApp({ city }: { city: City }) {
     if (to) p.set("to", enc(to));
     if (kind === "calm") p.set("route", "calm");
     const q = p.toString();
-    window.history.replaceState(null, "", q ? `${window.location.pathname}?${q}` : window.location.pathname);
-  }, [from, to, kind]);
+    // Only this city's own page carries its trip (a city switch must not drag the old trip along).
+    const path = `/${city.slug}`;
+    if (window.location.pathname !== path) return;
+    window.history.replaceState(window.history.state, "", q ? `${path}?${q}` : path);
+  }, [from, to, kind, city.slug]);
 
   // ---------- ride views ----------
   // Street View: real photos, two panorama loads per ride, crossfaded photo to photo along the route.

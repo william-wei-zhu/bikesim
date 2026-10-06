@@ -2,8 +2,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Settings, Info, MapPin, ChevronDown, Check, UserRound } from "lucide-react";
-import { CITIES, type City } from "@/lib/cities";
+import { Settings, Info, ChevronDown, Check, UserRound } from "lucide-react";
+import { CITIES, cityInk, type City } from "@/lib/cities";
 import { authConfigured } from "@/lib/auth";
 import { useAccount } from "@/components/useAccount";
 import { AuthSheet } from "@/components/AuthSheet";
@@ -46,22 +46,26 @@ function CitySwitcher({ city }: { city: City }) {
   }, [open]);
   return (
     <div ref={box} className="relative shrink-0">
+      {/* The city wears its own color and landmark icon, so it reads as the thing to tap to switch cities. */}
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="listbox" aria-label={`City: ${city.name}. Change city`}
-        className="inline-flex min-h-10 max-w-[10rem] items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[0.82rem] font-semibold hover:border-ink cursor-pointer">
-        <MapPin className="size-4 shrink-0" aria-hidden /> <span className="truncate">{city.short}</span>
+        style={{ background: city.color, color: cityInk(city) }}
+        className="inline-flex min-h-10 max-w-[11rem] items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[0.85rem] font-bold shadow-sm transition-transform hover:scale-[1.03] cursor-pointer">
+        <CityIcon city={city} className="size-8 rounded-full bg-white/95 p-0.5" />
+        <span className="truncate">{city.short}</span>
         <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {open && (
         <div role="listbox" aria-label="Cities" className="absolute left-0 top-12 z-40 max-h-[70vh] w-64 overflow-y-auto rounded-card border border-line bg-paper p-1.5 shadow-panel animate-in fade-in slide-in-from-top-1 duration-150">
           {CITIES.filter((c) => c.live).map((c) => (
             <Link key={c.slug} href={`/${c.slug}`} onClick={() => setOpen(false)} role="option" aria-selected={c.slug === city.slug}
-              className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[0.9rem] hover:bg-surface">
+              className="flex min-h-11 items-center gap-2.5 rounded-xl px-2 text-[0.9rem] hover:bg-surface"
+              style={c.slug === city.slug ? { background: `${c.color}1f` } : undefined}>
+              <CityIcon city={c} className="size-8 rounded-full p-0.5" style={{ background: `${c.color}26` }} />
               <span className="flex-1 font-semibold">{c.name}</span>
               <span className="font-mono text-[0.76rem] text-ink-2">{c.state}</span>
               {c.slug === city.slug && <Check className="size-4 text-accent" aria-hidden />}
             </Link>
           ))}
-          <Link href="/" onClick={() => setOpen(false)} className="mt-1 flex min-h-10 items-center justify-center rounded-xl border-t border-line text-[0.82rem] font-semibold hover:bg-surface">All cities</Link>
         </div>
       )}
     </div>
@@ -92,4 +96,9 @@ function AccountButton() {
       {sheet && <AuthSheet reason="account" onDone={() => setSheet(false)} onClose={() => setSheet(false)} />}
     </>
   );
+}
+
+/** The city's landmark icon (public/cities/icons/<slug>.png). */
+export function CityIcon({ city, className, style }: { city: City; className?: string; style?: React.CSSProperties }) {
+  return <Image src={`/cities/icons/${city.slug}.png`} alt="" width={64} height={64} className={`shrink-0 object-contain ${className ?? ""}`} style={style} />;
 }

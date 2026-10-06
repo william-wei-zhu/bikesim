@@ -8,5 +8,6 @@ const MapApp = dynamic(() => import("./MapApp"), { ssr: false });
 /** Takes the slug (not the City object) so the server page passes plain props. */
 export function MapAppLoader({ slug }: { slug: string }) {
   const city = getCity(slug);
-  return city ? <MapApp city={city} /> : null;
+  // Keyed by city: switching cities starts fresh (no old start/end pins, a new map with that city's streets).
+  return city ? <MapApp key={city.slug} city={city} /> : null;
 }

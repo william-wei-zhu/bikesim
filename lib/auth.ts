@@ -8,7 +8,10 @@ export type Account = { uid: string; email: string | null; name: string | null; 
 
 /** Street View rides per signed-in rider per day; the project-wide Google cap is 300 loads a day. */
 export const DAILY_STREETVIEW_RIDES = 10;
-const FREE_KEY = "bs-sv-free-used";
+/** Street View rides each device gets before we ask to sign in. */
+export const FREE_STREETVIEW_RIDES = 2;
+const FREE_KEY = "bs-sv-free-count";
+const OLD_FREE_KEY = "bs-sv-free-used"; // before 2026-10-06: "1" meant the single free ride was used
 const EMAIL_KEY = "bs-signin-email";
 
 const config = {
@@ -144,11 +147,18 @@ async function touchProfile(u: User) {
 }
 
 // ---------- the Street View gate ----------
+function freeRidesUsed() {
+  try {
+    const n = Number(localStorage.getItem(FREE_KEY));
+    if (n) return n;
+    return localStorage.getItem(OLD_FREE_KEY) === "1" ? 1 : 0;
+  } catch { return 0; }
+}
 export function freeStreetViewUsed() {
-  try { return localStorage.getItem(FREE_KEY) === "1"; } catch { return false; }
+  return freeRidesUsed() >= FREE_STREETVIEW_RIDES;
 }
 export function markFreeStreetViewUsed() {
-  try { localStorage.setItem(FREE_KEY, "1"); } catch { /* storage blocked: the gate falls back to per-session */ }
+  try { localStorage.setItem(FREE_KEY, String(freeRidesUsed() + 1)); } catch { /* storage blocked: the gate falls back to per-session */ }
 }
 
 /** Counts one Street View ride against today's allowance. Returns false when the rider is over it. */

@@ -32,7 +32,7 @@ export function AccountSection() {
       <h2 className="text-[1.15rem] font-bold">Account</h2>
       {!known ? <div className="mt-3 h-11" aria-hidden /> : !account ? (
         <>
-          <p className="mt-1 text-[0.9rem] text-ink-2">Not signed in. Your first Street View ride on each device is free; sign in to keep riding in Street View ({DAILY_STREETVIEW_RIDES} rides a day) and to save trips.</p>
+          <p className="mt-1 text-[0.9rem] text-ink-2">Not signed in. Sign in to keep riding in Street View ({DAILY_STREETVIEW_RIDES} rides a day) and to save your trips.</p>
           <Btn variant="primary" className="mt-3" onClick={() => setSheet(true)}><UserRound className="size-4" aria-hidden /> Sign in</Btn>
           {sheet && <AuthSheet reason="account" onDone={() => setSheet(false)} onClose={() => setSheet(false)} />}
         </>

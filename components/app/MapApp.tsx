@@ -77,7 +77,7 @@ export default function MapApp({ city }: { city: City }) {
   const bikeRef = useRef<BikeLayer | null>(null);
   const overlayRef = useRef<BikeOverlay | null>(null);
   const layersAdded = useRef(false);
-  // Street View costs real money: one free ride per device, then sign in (see lib/auth.ts).
+  // Street View costs real money: two free rides per device, then sign in (see lib/auth.ts).
   const [gate, setGate] = useState<((v: View | null) => void) | null>(null);
   const [confirmLink, setConfirmLink] = useState(false);
   const svGranted = useRef(false);

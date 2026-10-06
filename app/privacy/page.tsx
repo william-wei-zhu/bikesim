@@ -31,7 +31,7 @@ export default function PrivacyPage() {
             We store your email, when you joined and last visited, trips you save, and how many Street View rides you took today
             (Street View costs us money per ride, so signed-in riders get {DAILY_STREETVIEW_RIDES} a day). This lives in Google Cloud Firestore.
           </li>
-          <li>Each device gets one Street View ride before we ask you to sign in; that is remembered in your browser&apos;s local storage, not on our servers.</li>
+          <li>Each device gets two Street View rides before we ask you to sign in; that is remembered in your browser&apos;s local storage, not on our servers.</li>
           <li>Delete your account in Settings at any time: your saved trips and profile are deleted with it.</li>
           <li>We don&apos;t sell or share your data, send marketing email, or use ad trackers.</li>
         </ul>

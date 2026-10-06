@@ -10,8 +10,8 @@ export type AuthReason = "streetview" | "save" | "account" | "confirm";
 
 const COPY: Record<AuthReason, { title: string; body: string }> = {
   streetview: {
-    title: "Keep riding in Street View",
-    body: "Your first Street View ride was free. Sign in to keep riding through real street photos. It's free, and 3D rides never need an account.",
+    title: "Sign in to keep riding",
+    body: "Sign in to continue riding through real street photos. 3D rides never need an account.",
   },
   save: { title: "Save this trip", body: "Sign in to keep trips you want to ride again, on any device." },
   account: { title: "Sign in to BikeSim", body: "Ride in Street View and keep your saved trips on any device." },

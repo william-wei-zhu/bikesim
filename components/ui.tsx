@@ -80,3 +80,11 @@ export function LtsChip({ lts, label }: { lts: number; label?: string }) {
 export const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 export const pct = (x: number) => `${Math.round(x * 100)}%`;
 export const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
+/** Average urban bike speed, stops included, used for the simple ride-time estimate (distance / speed). */
+export const BIKE_KMH = 15;
+export const rideTime = (m: number) => {
+  const min = Math.max(1, Math.round((m / 1000 / BIKE_KMH) * 60));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), r = min % 60;
+  return r ? `${h} h ${r} min` : `${h} h`;
+};

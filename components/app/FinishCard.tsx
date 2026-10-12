@@ -1,7 +1,7 @@
 "use client";
 import { ArrowRight, Bike, RotateCcw, Share2, X } from "lucide-react";
 import type { Route } from "@/lib/engine/graph";
-import { km } from "@/components/ui";
+import { BIKE_KMH, km, rideTime } from "@/components/ui";
 import type { RouteKind } from "./types";
 
 const BAR = ["", "bg-lts1", "bg-lts2", "bg-lts3", "bg-lts4"];
@@ -16,6 +16,7 @@ export function FinishCard({ kind, ridden, other, onRideOther, onRideAgain, onSh
   const same = other.edges.join() === ridden.edges.join();
   const calmer = kind === "short" && !same && otherHostile < hostile;
   const saved = hostile - otherHostile;
+  const extraMin = Math.round(((other.lengthM - ridden.lengthM) / 1000 / BIKE_KMH) * 60);
 
   return (
     // Sits where the trip panel was (left on desktop, bottom sheet on phones) so the whole route stays visible.
@@ -34,7 +35,7 @@ export function FinishCard({ kind, ridden, other, onRideOther, onRideAgain, onSh
         </div>
 
         <p className="mt-2 text-[0.95rem]">
-          You rode the {kind === "short" ? "shortest" : "lowest-stress"} route: <span className="font-semibold">{km(ridden.lengthM)}</span>.
+          You rode the {kind === "short" ? "shortest" : "lowest-stress"} route: <span className="font-semibold">{km(ridden.lengthM)}</span> (about {rideTime(ridden.lengthM)}).
         </p>
         <div className="mt-3 flex h-3.5 overflow-hidden rounded-full" aria-label="Distance by stress level">
           {[1, 2, 3, 4].map((l) => ridden.byLts[l] > 0 && (
@@ -46,10 +47,10 @@ export function FinishCard({ kind, ridden, other, onRideOther, onRideAgain, onSh
           <div className="mt-3 rounded-card border border-line bg-surface p-3 md:mt-4 md:p-4">
             <p className="eyebrow">A calmer way exists</p>
             <p className="mt-1 text-[0.95rem] font-semibold md:text-[1rem]">
-              The lowest-stress route is {km(other.lengthM)}, with {otherHostile < 20 ? "almost no" : `only ${km(otherHostile)} of`} hostile riding.
+              The lowest-stress route is {km(other.lengthM)} (about {rideTime(other.lengthM)}), with {otherHostile < 20 ? "almost no" : `only ${km(otherHostile)} of`} hostile riding.
             </p>
             <p className="mt-1 hidden text-[0.85rem] text-ink-2 md:block">
-              {km(Math.max(0, other.lengthM - ridden.lengthM))} longer, {km(saved)} less riding next to fast, heavy traffic.
+              {km(Math.max(0, other.lengthM - ridden.lengthM))} longer{extraMin >= 1 ? ` (+${rideTime(other.lengthM - ridden.lengthM)})` : ""}, {km(saved)} less riding next to fast, heavy traffic.
             </p>
           </div>
         )}
@@ -62,7 +63,7 @@ export function FinishCard({ kind, ridden, other, onRideOther, onRideAgain, onSh
         )}
         {kind === "calm" && !same && other.byLts[4] > hostile && (
           <p className="mt-4 rounded-card border border-line bg-surface p-4 text-[0.95rem]">
-            The shortest route is {km(other.lengthM)} but has {km(other.byLts[4] - hostile)} more hostile riding. You avoided it.
+            The shortest route is {km(other.lengthM)} (about {rideTime(other.lengthM)}) but has {km(other.byLts[4] - hostile)} more hostile riding. You avoided it.
           </p>
         )}
 

@@ -8,7 +8,7 @@ import { track } from "@/lib/analytics";
 import { LTS_INFO, type Poi } from "@/lib/engine/net";
 import type { Stretch, StretchWhy } from "@/lib/engine/graph";
 import { SearchBox, type Place } from "@/components/SearchBox";
-import { Btn, Card, Segmented, km } from "@/components/ui";
+import { Btn, Card, Segmented, km, rideTime } from "@/components/ui";
 import type { Routes, RouteKind } from "./types";
 import { cn } from "@/lib/utils";
 import type { City } from "@/lib/cities";
@@ -128,7 +128,7 @@ export function TripPanel(p: {
             <div className="mt-4">
               <p className="eyebrow mb-2">Route</p>
               <Segmented<RouteKind> stretch label="Route" value={p.kind} onChange={p.setKind}
-                options={[{ value: "calm", label: "Lowest stress", sub: km(ok.calm.lengthM) }, { value: "short", label: "Shortest", sub: km(ok.fastest.lengthM) }]} />
+                options={[{ value: "calm", label: "Lowest stress", sub: `${km(ok.calm.lengthM)} · ${rideTime(ok.calm.lengthM)}` }, { value: "short", label: "Shortest", sub: `${km(ok.fastest.lengthM)} · ${rideTime(ok.fastest.lengthM)}` }]} />
             </div>
 
             <div className="mt-4">

@@ -33,14 +33,17 @@ RideScore within one level on 85% of matched length. The inputs come from OpenSt
 
 | Input | From OSM | When OSM is silent |
 |---|---|---|
-| Bike facility | `highway=cycleway`, trails with `bicycle=yes/designated`, `cycleway*=track` (protected); `cycleway*=lane` (painted, or buffered with `:buffer`/`:separation`) | none |
+| Bike facility | `highway=cycleway`, paved `highway=path` (bikes allowed by US default), other trails with `bicycle=yes/designated`, `cycleway*=track` (protected); `cycleway*=lane` (painted, or buffered with `:buffer`/`:separation`) | none |
 | Speed | `maxspeed` | the city's legal default: `default_mph` for local streets, `arterial_mph` where set, else 25 to 40 mph by class |
 | Lanes | `lanes` | 1 or 2 for local streets, 2 to 4 by class |
 | Road function | `highway` class (residential/unclassified/service = local) | |
 
 Dropped before routing: motorways, sidewalks and footpaths that don't allow bikes, unnamed service roads
 (parking aisles, driveways, access lanes; alleys and named or bike-tagged ones stay), private roads, and
-anything not connected to the main network.
+anything not connected to the main network. Dirt paths (`surface=dirt/ground/grass/...`) stay out unless
+bikes are signed on them. Plain footways (not sidewalks) stay in only as trail connectors: at most 60 m long,
+touching a trail and at least one other way (greenway ramps, crosswalks onto a trail); `meta.json` counts them as
+`trail_connectors`.
 
 Official city layers replace the OSM estimate where they exist (`overrides` in `cities.toml`,
 code in `overrides.py`). A layer keyed by OSM way id is a straight lookup; a layer on the city's own

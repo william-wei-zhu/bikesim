@@ -79,8 +79,24 @@ def usable(tags: dict[str, str]) -> bool:
         # Sidewalks and footpaths only when bikes are explicitly welcome.
         if tags.get("footway") in {"sidewalk", "crossing"}:
             return bike == "designated"
-        return bike in {"yes", "designated", "permissive"}
+        if bike in {"yes", "designated", "permissive"}:
+            return True
+        # Multi-use paths: bikes are allowed by default in the US (OSM's US access defaults), so an untagged
+        # paved path is a trail. Dirt hiking paths stay out unless bikes are signed on them.
+        return hw == "path" and tags.get("surface", "") not in UNPAVED
     return False
+
+
+UNPAVED = {"dirt", "ground", "earth", "grass", "mud", "sand", "rock", "rocks", "woodchips", "stepping_stones"}
+CONNECTOR_MAX_M = 60
+
+
+def connector(tags: dict[str, str]) -> bool:
+    """A footway that may join a trail to the street network when it is short (see build.py): ramps and
+    crosswalks onto a greenway are often plain footways. Never a sidewalk, and never where bikes are barred."""
+    if tags.get("highway") != "footway" or tags.get("footway") == "sidewalk" or tags.get("area") == "yes":
+        return False
+    return tags.get("bicycle") not in {"no", "dismount"} and tags.get("access") not in {"no", "private"}
 
 
 def parse_mph(v: str | None) -> int | None:

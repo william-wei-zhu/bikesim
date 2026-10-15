@@ -23,6 +23,9 @@ def test_build_writes_the_app_schema(tmp_path):
     assert by_name["Quiet Street"] == {1}      # residential, unsigned: city default 25 mph
     assert by_name["Middle Road"] == {1}       # painted lane, 25 mph, one lane each way
     assert by_name["Tiny Trail"] == {1}
+    assert by_name["Trail Ramp"] == {2}        # a short footway joining the trail to a street
+    assert "Long Footway" not in by_name       # too long to be a connector
+    assert meta["trail_connectors"] == 1
     # Dropped: the sidewalk and motorway (unusable) and the island loop (not connected).
     assert not {"Freeway", "Island Loop"} & set(by_name)
     # Big Avenue is split at West/Middle/trail intersections into 2 blocks.

@@ -74,13 +74,35 @@ export function shortest(net: Net, a: number, b: number, cost: (e: number) => nu
   return { nodes, edges, lengthM, byLts, breaking };
 }
 
+// Calm-route cost per metre by stress. Off-street trails and tracks beat a quiet street, so the route takes
+// a trail for up to ~25% extra distance and detours ~60% to skip an LTS 3 street; streets above the
+// rider's comfort stay a near-last resort (40x, so they are at least 25x a busy LTS 3 street, as before).
+const TRAIL_COST = 0.8;
+const LTS_COST = [1, 1, 1.15, 1.6, 40];
+const OFF_STREET = new Set(["trail_rule", "track_rule"]);
+const calmCosts = new WeakMap<Net, Float32Array>();
+
+function calmCost(net: Net, threshold: number) {
+  let c = calmCosts.get(net);
+  if (!c) {
+    c = new Float32Array(net.nEdges);
+    const offStreet = net.src.map((s) => OFF_STREET.has(s));
+    for (let e = 0; e < net.nEdges; e++) {
+      const lts = net.elts[e];
+      c[e] = net.elen[e] * (lts === 1 && offStreet[net.esrc[e]] ? TRAIL_COST : LTS_COST[lts] ?? LTS_COST[4]);
+    }
+    calmCosts.set(net, c);
+  }
+  const PENALTY = LTS_COST[4];
+  return (e: number) => (rideable(net, e, threshold) ? c[e] : net.elen[e] * PENALTY);
+}
+
 /** Fastest route (shortest distance on any street) and the calmest route for this rider.
- * The calm route strongly avoids streets above the rider's comfort; if it still needs some,
- * those are the hostile stretches the rider cannot avoid. */
+ * The calm route prefers trails, then quiet streets, and strongly avoids streets above the rider's comfort;
+ * if it still needs some, those are the hostile stretches the rider cannot avoid. */
 export function routePair(net: Net, a: number, b: number, threshold: number) {
   const fastest = shortest(net, a, b, (e) => net.elen[e], threshold);
-  const PENALTY = 25;
-  const calm = shortest(net, a, b, (e) => net.elen[e] * (rideable(net, e, threshold) ? 1 : PENALTY), threshold);
+  const calm = shortest(net, a, b, calmCost(net, threshold), threshold);
   return { fastest, calm };
 }
 

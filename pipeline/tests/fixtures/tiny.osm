@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <osm version="0.6" generator="hand">
   <!-- A 3x2 grid near (0.001 deg apart): an arterial along the south, residential streets, a trail,
-       a sidewalk that must be dropped, a motorway that must be dropped, and an island loop. -->
+       a sidewalk that must be dropped, footways onto the trail, a motorway that must be dropped, and an island loop. -->
   <node id="1" lat="40.000" lon="-80.000"/>
   <node id="2" lat="40.000" lon="-79.999"/>
   <node id="3" lat="40.000" lon="-79.998"/>
@@ -9,6 +9,8 @@
   <node id="5" lat="40.001" lon="-79.999"/>
   <node id="6" lat="40.001" lon="-79.998"/>
   <node id="7" lat="40.0005" lon="-79.9985"/>
+  <node id="8" lat="40.0005" lon="-79.999"/>
+  <node id="9" lat="40.0005" lon="-80.000"/>
   <node id="20" lat="40.003" lon="-79.990"/>
   <node id="21" lat="40.003" lon="-79.989"/>
   <node id="22" lat="40.0035" lon="-79.9895"/>
@@ -20,10 +22,13 @@
     <tag k="highway" v="primary"/><tag k="name" v="Big Avenue"/><tag k="lanes" v="6"/><tag k="maxspeed" v="35 mph"/></way>
   <way id="101"><nd ref="4"/><nd ref="5"/><nd ref="6"/>
     <tag k="highway" v="residential"/><tag k="name" v="Quiet Street"/></way>
-  <way id="102"><nd ref="1"/><nd ref="4"/><tag k="highway" v="residential"/><tag k="name" v="West Street"/><tag k="maxspeed" v="20 mph"/></way>
-  <way id="103"><nd ref="2"/><nd ref="5"/><tag k="highway" v="tertiary"/><tag k="name" v="Middle Road"/><tag k="cycleway:right" v="lane"/><tag k="maxspeed" v="25 mph"/></way>
+  <way id="102"><nd ref="1"/><nd ref="9"/><nd ref="4"/><tag k="highway" v="residential"/><tag k="name" v="West Street"/><tag k="maxspeed" v="20 mph"/></way>
+  <way id="103"><nd ref="2"/><nd ref="8"/><nd ref="5"/><tag k="highway" v="tertiary"/><tag k="name" v="Middle Road"/><tag k="cycleway:right" v="lane"/><tag k="maxspeed" v="25 mph"/></way>
   <way id="104"><nd ref="3"/><nd ref="7"/><nd ref="6"/><tag k="highway" v="cycleway"/><tag k="name" v="Tiny Trail"/></way>
   <way id="105"><nd ref="20"/><nd ref="21"/><nd ref="22"/><nd ref="20"/><tag k="highway" v="residential"/><tag k="name" v="Island Loop"/></way>
   <way id="106"><nd ref="4"/><nd ref="30"/><tag k="highway" v="footway"/><tag k="footway" v="sidewalk"/></way>
   <way id="107"><nd ref="30"/><nd ref="31"/><tag k="highway" v="motorway"/><tag k="name" v="Freeway"/></way>
+  <!-- Footways onto the trail: a short ramp to Middle Road joins the network, a long one does not. -->
+  <way id="108"><nd ref="7"/><nd ref="8"/><tag k="highway" v="footway"/><tag k="name" v="Trail Ramp"/></way>
+  <way id="109"><nd ref="7"/><nd ref="9"/><tag k="highway" v="footway"/><tag k="name" v="Long Footway"/></way>
 </osm>

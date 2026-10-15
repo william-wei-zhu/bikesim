@@ -56,6 +56,7 @@ class _Ways(osmium.SimpleHandler):
         super().__init__()
         self.box = box
         self.ways: list[Way] = []
+        self.connectors: list[Way] = []
         self.loc: dict[int, tuple[float, float]] = {}
         self.pois: list[tuple[str, str, float, float]] = []
 
@@ -76,7 +77,12 @@ class _Ways(osmium.SimpleHandler):
                     self._poi(tags, sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
             return
         if not L.usable(tags):
+            if L.connector(tags):
+                self._keep(w, tags, self.connectors)
             return
+        self._keep(w, tags, self.ways)
+
+    def _keep(self, w, tags, into):
         refs, inside = [], False
         for nd in w.nodes:
             if not nd.location.valid():
@@ -85,7 +91,26 @@ class _Ways(osmium.SimpleHandler):
             self.loc[nd.ref] = (nd.lon, nd.lat)
             inside = inside or self._inside(nd.lon, nd.lat)
         if inside and len(refs) > 1:
-            self.ways.append(Way(w.id, refs, tags))
+            into.append(Way(w.id, refs, tags))
+
+    def add_connectors(self) -> int:
+        """Short footways that join a trail to another way (a greenway ramp, a crosswalk onto a trail).
+        Trails would otherwise dead-end a few metres short of the street they meet."""
+        on_way: dict[int, set[int]] = {}
+        trail_nodes = set()
+        for i, w in enumerate(self.ways):
+            for r in w.refs:
+                on_way.setdefault(r, set()).add(i)
+            if w.tags.get("highway") in L.PATHS | {"cycleway"}:
+                trail_nodes.update(w.refs)
+        added = 0
+        for w in self.connectors:
+            length = sum(metres(*self.loc[w.refs[k - 1]], *self.loc[w.refs[k]]) for k in range(1, len(w.refs)))
+            touched = set().union(*(on_way.get(r, set()) for r in w.refs))
+            if length <= L.CONNECTOR_MAX_M and len(touched) >= 2 and trail_nodes.intersection(w.refs):
+                self.ways.append(w)
+                added += 1
+        return added
 
     def _poi(self, tags, x, y):
         if not tags.get("name") or not self._inside(x, y):
@@ -106,6 +131,7 @@ def metres(x1, y1, x2, y2):
 def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: bool = False) -> dict:
     h = _Ways(city.box)
     h.apply_file(str(pbf), locations=True)
+    n_connectors = h.add_connectors()
     ov = Overrides.load(city.overrides)
     if ov.spatial:
         # Layers on the city's own centerlines are matched by geometry; roads only (see overrides.py).
@@ -219,6 +245,7 @@ def build(city: City, pbf: Path, out: Path, snapshot: str = "", legacy_json: boo
         "default_mph": city.default_mph, "arterial_mph": city.arterial_mph,
         "network_bin_bytes": bin_bytes, "street_tiles": tiles, "nodes": len(lon), "edges": len(edges), "pois": len(pois),
         "dropped_edges": len(raw_edges) - len(edges),
+        "trail_connectors": n_connectors,
         "km_by_lts": {str(k): round(v / 1000, 1) for k, v in sorted(by_lts.items())},
         "share_by_lts": {str(k): round(v / total, 3) for k, v in sorted(by_lts.items())},
         "official_overrides": ov.describe(),

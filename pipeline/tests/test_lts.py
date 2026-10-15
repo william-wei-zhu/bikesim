@@ -53,7 +53,11 @@ def test_facility(tags, fac):
     ({"highway": "motorway"}, False),
     ({"highway": "footway", "footway": "sidewalk"}, False),
     ({"highway": "footway", "bicycle": "designated"}, True),
-    ({"highway": "path"}, False),
+    ({"highway": "path"}, True),                       # US default: bikes allowed on paths
+    ({"highway": "path", "surface": "dirt"}, False),   # hiking trail
+    ({"highway": "path", "surface": "dirt", "bicycle": "yes"}, True),
+    ({"highway": "path", "bicycle": "no"}, False),
+    ({"highway": "footway"}, False),                   # only as a short trail connector (build.py)
     ({"highway": "service", "service": "parking_aisle"}, False),
     ({"highway": "residential", "access": "private"}, False),
     ({"highway": "primary", "bicycle": "no"}, False),

@@ -11,7 +11,7 @@
 - `app/` Next.js 16 App Router. `/` is the home map (`components/app/HomeApp.tsx` via `HomeLoader`): the live stress map of the city nearest the visitor (`nearestCity` in cities.ts from Vercel `x-vercel-ip-latitude/longitude`, DC when unknown) behind a panel of every city as a button (icon, name, state; nearest first with a "Near you" chip); no routing data loads there; `/[city]` is the map app (client-only via `components/app/MapAppLoader.tsx`, static for live cities, 404 otherwise). `app/api/geocode?city=` proxies Nominatim (bounded to the city box, per-IP limit, 24h in-memory cache; no city means DC).
 - `lib/engine/` framework-free TypeScript (no React imports):
   - `net.ts` loads `network.bin` (`parseNetBin`; layout documented in `pipeline/src/bikesim_data/binary.py`) or the legacy `network.json` into typed arrays + CSR adjacency + grid index; `COMMUTER_LTS = 3` is the only rider.
-  - `graph.ts` Dijkstra routing (`routePair`: shortest + lowest-stress with a 25x penalty on LTS 4; leftover LTS 4 edges are the unavoidable hostile stretches) and `stretches()` (route split by stress + street).
+  - `graph.ts` Dijkstra routing (`routePair`: shortest + lowest-stress weighted by stress, trails 0.8, LTS 1 to 3: 1 / 1.15 / 1.6, LTS 4: 40; leftover LTS 4 edges are the unavoidable hostile stretches) and `stretches()` (route split by stress + street).
   - `geom.ts` small GeoJSON helpers (the street layer is a PMTiles vector source now).
   - `map.ts` MapLibre layers: flat stress-colored streets (PMTiles `streets` layer, `lts` property, via the `pmtiles://` protocol), white 3D buildings, route with a stress `line-gradient`, Start/End pins.
   - `ride.ts` first-person fly-through; frames carry position + heading for the other views.

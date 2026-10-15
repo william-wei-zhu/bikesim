@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { ChevronRight, MapPin } from "lucide-react";
 import type * as maplibregl from "maplibre-gl";
-import { createMap, addLayers, applyBasemapTheme, applyPaint } from "@/lib/engine/map";
+import { createMap, addLayers, applyBasemapTheme, applyPaint, setGhostPin } from "@/lib/engine/map";
 import { LIVE_CITIES, cityInk, type City } from "@/lib/cities";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export default function HomeApp({ nearest }: { nearest: City }) {
   const [mapReady, setMapReady] = useState(false);
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
+  const router = useRouter();
 
   // Streets only: no routing network or places, so the home map stays light.
   useEffect(() => {
@@ -30,8 +32,22 @@ export default function HomeApp({ nearest }: { nearest: City }) {
       applyPaint(map, { hasRoute: false });
       setMapReady(true);
     });
-    return () => { map.remove(); mapRef.current = null; };
-  }, [nearest]);
+    // Step 1 of a trip right here: a click sets the start and hands off to the city's map for the end.
+    map.getCanvas().style.cursor = "crosshair";
+    map.on("mousemove", (e) => {
+      if ((e.originalEvent as PointerEvent).pointerType === "touch") return;
+      setGhostPin(map, "start", [e.lngLat.lng, e.lngLat.lat]);
+    });
+    const onLeave = () => setGhostPin(map, null);
+    map.getCanvasContainer().addEventListener("mouseleave", onLeave);
+    map.on("click", (e) => {
+      const { lng, lat } = e.lngLat;
+      setGhostPin(map, "start", [lng, lat]);
+      track("home_map_start", { city: nearest.slug });
+      router.push(`/${nearest.slug}?from=${lng.toFixed(5)},${lat.toFixed(5)},Dropped pin`);
+    });
+    return () => { setGhostPin(map, null); map.remove(); mapRef.current = null; };
+  }, [nearest, router]);
   useEffect(() => { if (mapReady && mapRef.current) applyBasemapTheme(mapRef.current, dark); }, [mapReady, dark]);
 
   // The nearest city leads the list, matching the map behind the panel.
@@ -42,6 +58,13 @@ export default function HomeApp({ nearest }: { nearest: City }) {
       <Header />
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0"><div ref={mapEl} className="h-full w-full" aria-label={`3D map of ${nearest.name} streets colored by bike stress`} role="region" /></div>
+        {/* Same step prompt as the city map, so the flow reads as one: start here, end on the next screen. */}
+        <div role="status"
+          className="pointer-events-none absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-full bg-primary py-2 pl-2 pr-5 text-[0.9rem] font-semibold text-primary-ink shadow-panel animate-in fade-in slide-in-from-top-3 duration-500 md:left-[calc(50%+220px)]">
+          <span className="rounded-full bg-paper px-2.5 py-1 text-[0.78rem] font-bold text-ink">1 · Start</span>
+          <span className="md:hidden">Tap the map to set your start</span>
+          <span className="hidden md:inline">Click the map to set your start</span>
+        </div>
         <aside aria-label="Cities" className={cn(
           "absolute z-10 flex flex-col overflow-hidden border border-line bg-paper shadow-panel",
           "inset-x-0 bottom-0 max-h-[55%] rounded-t-3xl",
@@ -50,7 +73,8 @@ export default function HomeApp({ nearest }: { nearest: City }) {
           <div className="overflow-y-auto overflow-x-hidden px-5 pb-5 pt-5">
             <h2 className="text-[1.5rem] font-bold leading-tight">Feel it before you ride it.</h2>
             <p className="mt-2 text-[0.85rem] text-ink-2">
-              Pick a city, plan a trip, see the stress of every block, then ride it virtually.
+              <span className="md:hidden">Tap</span><span className="hidden md:inline">Click</span> the map to start a trip in {nearest.name}, or pick another city.
+              See the stress of every block, then ride it virtually.
             </p>
             <ul className="mt-4 grid grid-cols-2 gap-2">
               {cities.map((c) => {

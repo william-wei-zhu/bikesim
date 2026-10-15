@@ -97,9 +97,14 @@ export default function MapApp({ city }: { city: City }) {
     if (!mapEl.current || mapRef.current) return;
     const map = createMap(mapEl.current, city, { flat: window.matchMedia("(max-width: 767px)").matches });
     mapRef.current = map;
+    // Start set on the home map (no end yet): open over that pin, not back at downtown.
+    if (init?.from && !init.to) {
+      const { x, y } = init.from;
+      map.fitBounds([[x, y], [x, y]], { padding: window.innerWidth < 768 ? { top: 60, bottom: window.innerHeight * 0.5, left: 40, right: 40 } : { top: 80, bottom: 80, left: 480, right: 80 }, maxZoom: 14.5, duration: 0, bearing: 0 });
+    }
     map.on("load", () => setMapReady(true));
     return () => { map.remove(); mapRef.current = null; };
-  }, [city]);
+  }, [city, init]);
 
   // ---------- route ----------
   const routes: Routes = useMemo(() => {

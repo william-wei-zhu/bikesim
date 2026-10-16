@@ -81,7 +81,7 @@ export const CITIES: City[] = [
   osmCity({
     slug: "new-york", emoji: "🗽", color: "#f5a700", name: "New York City", short: "NYC", state: "NY", center: [-73.9857, 40.7484], zoom: 13.2,
     box: [-74.26, 40.49, -73.70, 40.92], searchHint: ", New York, NY",
-    searchWords: ["new york", "nyc", "brooklyn", "queens", "bronx", "manhattan", "staten island"], transit: "Subway", data: "2026-10-06",
+    searchWords: ["new york", "nyc", "brooklyn", "queens", "bronx", "manhattan", "staten island"], transit: "Subway", data: "2026-10-15",
     examples: [
       trip(p("Williamsburg", 40.7143, -73.9614), p("Union Square", 40.7359, -73.9911)),
       trip(p("Prospect Park", 40.6602, -73.9690), p("Brooklyn Bridge Park", 40.7003, -73.9967)),
@@ -90,7 +90,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "seattle", emoji: "☕", color: "#0f9d8a", name: "Seattle", short: "Seattle", state: "WA", center: [-122.335, 47.608],
-    box: [-122.46, 47.48, -122.22, 47.74], searchHint: ", Seattle, WA", searchWords: ["seattle"], transit: "Link", data: "2026-10-06",
+    box: [-122.46, 47.48, -122.22, 47.74], searchHint: ", Seattle, WA", searchWords: ["seattle"], transit: "Link", data: "2026-10-15",
     examples: [
       trip(p("Fremont", 47.6510, -122.3500), p("Pike Place Market", 47.6097, -122.3422)),
       trip(p("Capitol Hill", 47.6253, -122.3222), p("University of Washington", 47.6553, -122.3035)),
@@ -99,7 +99,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "portland", emoji: "🌹", color: "#d6457c", name: "Portland", short: "Portland", state: "OR", center: [-122.676, 45.52],
-    box: [-122.84, 45.43, -122.47, 45.66], searchHint: ", Portland, OR", searchWords: ["portland"], transit: "MAX", data: "2026-10-06",
+    box: [-122.84, 45.43, -122.47, 45.66], searchHint: ", Portland, OR", searchWords: ["portland"], transit: "MAX", data: "2026-10-15",
     examples: [
       trip(p("Alberta Arts", 45.5590, -122.6450), p("Pioneer Square", 45.5189, -122.6793)),
       trip(p("Sellwood", 45.4647, -122.6530), p("OMSI", 45.5084, -122.6655)),
@@ -108,7 +108,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "san-francisco", emoji: "🌉", color: "#ff6f3c", name: "San Francisco", short: "SF", state: "CA", center: [-122.4194, 37.7793],
-    box: [-122.52, 37.70, -122.35, 37.84], searchHint: ", San Francisco, CA", searchWords: ["san francisco", "sf"], transit: "BART", data: "2026-10-06",
+    box: [-122.52, 37.70, -122.35, 37.84], searchHint: ", San Francisco, CA", searchWords: ["san francisco", "sf"], transit: "BART", data: "2026-10-15",
     examples: [
       trip(p("The Mission", 37.7599, -122.4148), p("Ferry Building", 37.7955, -122.3937)),
       trip(p("Golden Gate Park", 37.7694, -122.4862), p("Civic Center", 37.7793, -122.4176)),
@@ -117,7 +117,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "los-angeles", emoji: "🌴", color: "#8e44ad", name: "Los Angeles", short: "LA", state: "CA", center: [-118.2437, 34.0522], zoom: 13,
-    box: [-118.67, 33.70, -118.15, 34.34], searchHint: ", Los Angeles, CA", searchWords: ["los angeles", "la"], transit: "Metro", data: "2026-10-06",
+    box: [-118.67, 33.70, -118.15, 34.34], searchHint: ", Los Angeles, CA", searchWords: ["los angeles", "la"], transit: "Metro", data: "2026-10-15",
     examples: [
       trip(p("Echo Park", 34.0782, -118.2606), p("Union Station", 34.0562, -118.2365)),
       trip(p("Venice Beach", 33.9850, -118.4695), p("Santa Monica Pier", 34.0094, -118.4973)),
@@ -126,7 +126,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "chicago", emoji: "🍕", color: "#2b7de9", name: "Chicago", short: "Chicago", state: "IL", center: [-87.6298, 41.8818],
-    box: [-87.94, 41.64, -87.52, 42.03], searchHint: ", Chicago, IL", searchWords: ["chicago"], transit: "L", data: "2026-10-06",
+    box: [-87.94, 41.64, -87.52, 42.03], searchHint: ", Chicago, IL", searchWords: ["chicago"], transit: "L", data: "2026-10-15",
     stress: { name: "Cook County LTS 2023", url: "https://gis.cookcountyil.gov/traditional/rest/services/DOTH_expanded/MapServer/14", by: "Cook County DOTH" }, records: "Cook County's stress map",
     examples: [
       trip(p("Wicker Park", 41.9088, -87.6796), p("The Loop", 41.8827, -87.6278)),
@@ -136,7 +136,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "boston", emoji: "🦞", color: "#1e7b4a", name: "Boston", short: "Boston", state: "MA", center: [-71.0589, 42.3601],
-    box: [-71.19, 42.23, -70.99, 42.40], searchHint: ", Boston, MA", searchWords: ["boston"], transit: "T", data: "2026-10-06",
+    box: [-71.19, 42.23, -70.99, 42.40], searchHint: ", Boston, MA", searchWords: ["boston"], transit: "T", data: "2026-10-15",
     stress: { name: "Boston BLTS 2024", url: "https://www.boston.gov/departments/transportation", by: "City of Boston" }, records: "Boston's stress map",
     examples: [
       trip(p("Jamaica Plain", 42.3097, -71.1151), p("Back Bay", 42.3503, -71.0810)),
@@ -146,7 +146,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "philadelphia", emoji: "🔔", color: "#3949ab", name: "Philadelphia", short: "Philly", state: "PA", center: [-75.1652, 39.9526],
-    box: [-75.28, 39.87, -74.96, 40.14], searchHint: ", Philadelphia, PA", searchWords: ["philadelphia", "philly"], transit: "SEPTA", data: "2026-10-06",
+    box: [-75.28, 39.87, -74.96, 40.14], searchHint: ", Philadelphia, PA", searchWords: ["philadelphia", "philly"], transit: "SEPTA", data: "2026-10-15",
     stress: { name: "DVRPC LTS network", url: "https://catalog.dvrpc.org/dataset/dvrpc-level-of-traffic-stress-lts-network", by: "DVRPC" }, records: "DVRPC's stress map",
     examples: [
       trip(p("Fishtown", 39.9721, -75.1340), p("City Hall", 39.9524, -75.1636)),
@@ -156,7 +156,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "pittsburgh", emoji: "⚙️", color: "#546e7a", name: "Pittsburgh", short: "Pittsburgh", state: "PA", center: [-79.9959, 40.4406],
-    box: [-80.10, 40.36, -79.86, 40.51], searchHint: ", Pittsburgh, PA", searchWords: ["pittsburgh"], transit: "T", data: "2026-10-06",
+    box: [-80.10, 40.36, -79.86, 40.51], searchHint: ", Pittsburgh, PA", searchWords: ["pittsburgh"], transit: "T", data: "2026-10-15",
     examples: [
       trip(p("Lawrenceville", 40.4670, -79.9600), p("Point State Park", 40.4416, -80.0127)),
       trip(p("Squirrel Hill", 40.4384, -79.9228), p("Oakland", 40.4443, -79.9532)),
@@ -165,7 +165,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "minneapolis", emoji: "🛶", color: "#7cb342", name: "Minneapolis", short: "Minneapolis", state: "MN", center: [-93.265, 44.9778],
-    box: [-93.33, 44.89, -93.19, 45.06], searchHint: ", Minneapolis, MN", searchWords: ["minneapolis"], transit: "Light rail", data: "2026-10-06",
+    box: [-93.33, 44.89, -93.19, 45.06], searchHint: ", Minneapolis, MN", searchWords: ["minneapolis"], transit: "Light rail", data: "2026-10-15",
     examples: [
       trip(p("Uptown", 44.9490, -93.2980), p("Stone Arch Bridge", 44.9808, -93.2531)),
       trip(p("Lake Nokomis", 44.9086, -93.2420), p("Minnehaha Falls", 44.9153, -93.2110)),
@@ -174,7 +174,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "denver", emoji: "🏔️", color: "#8d5a3b", name: "Denver", short: "Denver", state: "CO", center: [-104.9903, 39.7392],
-    box: [-105.11, 39.61, -104.60, 39.91], searchHint: ", Denver, CO", searchWords: ["denver"], transit: "Light rail", data: "2026-10-06",
+    box: [-105.11, 39.61, -104.60, 39.91], searchHint: ", Denver, CO", searchWords: ["denver"], transit: "Light rail", data: "2026-10-15",
     examples: [
       trip(p("Highlands", 39.7620, -105.0110), p("Union Station", 39.7530, -105.0002)),
       trip(p("Washington Park", 39.7000, -104.9700), p("State Capitol", 39.7393, -104.9848)),
@@ -183,7 +183,7 @@ export const CITIES: City[] = [
   }),
   osmCity({
     slug: "austin", emoji: "🎸", color: "#bf5700", name: "Austin", short: "Austin", state: "TX", center: [-97.7431, 30.2672],
-    box: [-97.94, 30.10, -97.56, 30.52], searchHint: ", Austin, TX", searchWords: ["austin"], transit: "CapMetro", data: "2026-10-06",
+    box: [-97.94, 30.10, -97.56, 30.52], searchHint: ", Austin, TX", searchWords: ["austin"], transit: "CapMetro", data: "2026-10-15",
     examples: [
       trip(p("Hyde Park", 30.3050, -97.7290), p("Texas Capitol", 30.2747, -97.7404)),
       trip(p("East Austin", 30.2620, -97.7220), p("Zilker Park", 30.2669, -97.7729)),
